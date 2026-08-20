@@ -6,7 +6,7 @@ import { usePuzzleImage } from '../hooks/useArtwork'
  * One memory in the gallery, dressed up as a taped-in scrapbook photo.
  * The whole card is the button — easy to hit with a thumb.
  */
-export default function MemoryCard({ memory, index, completed, onPick }) {
+export default function MemoryCard({ memory, index, onPick }) {
   const { src: image, missing, file } = usePuzzleImage(memory)
 
   return (
@@ -47,11 +47,6 @@ export default function MemoryCard({ memory, index, completed, onPick }) {
             </g>
           </svg>
 
-          {completed && (
-            <span className="absolute right-2 top-2 rotate-[-8deg] rounded-pebble border-2 border-sage-deep bg-paper/95 px-2 py-0.5 font-hand text-lg font-semibold text-sage-deep shadow-sketch">
-              done ✓
-            </span>
-          )}
         </div>
 
         <div className="mt-3 px-1 text-center">

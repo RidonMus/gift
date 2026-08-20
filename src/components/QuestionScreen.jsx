@@ -230,16 +230,18 @@ function ConfessionModal({ onClose, onBack }) {
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="I knew it"
+      aria-label="The no button doesn't work anyway"
     >
       <div
         className="max-h-full w-full max-w-lg animate-pop-in overflow-y-auto rounded-card border-[3px] border-ink/75 bg-paper p-6 shadow-lifted sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-hand text-5xl font-bold leading-tight text-ink">I knew it! ❤️</h2>
+        <h2 className="font-hand text-5xl font-bold leading-tight text-ink">
+          The no button doesn’t work anyway. ❤️
+        </h2>
 
         <p className="mt-3 font-body text-base leading-relaxed text-ink-soft sm:text-lg">
-          Impossible. Go solve some puzzles my love. Also, you couldn’t click No because:
+          Go solve some puzzles my love. Also, you couldn’t click No because:
         </p>
 
         <ol className="mt-4 space-y-2.5">

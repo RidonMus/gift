@@ -71,13 +71,7 @@ export default function WelcomeScreen({ completed, onPick, onAskQuestion, name =
 
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
           {memories.map((memory, i) => (
-            <MemoryCard
-              key={memory.id}
-              memory={memory}
-              index={i}
-              completed={completed.includes(memory.id)}
-              onPick={onPick}
-            />
+            <MemoryCard key={memory.id} memory={memory} index={i} onPick={onPick} />
           ))}
         </div>
 
