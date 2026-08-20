@@ -20,52 +20,53 @@
 export const memories = [
   {
     id: 'memory2',
-    scene: 'cocoa',
-    title: 'The Hug',
+    scene: 'Wedding',
+    title: 'Our wedding day',
     emoji: '🥂',
     photo: 'images/original2.jpg',
     lineArt: 'images/memory2-lines.jpg',
     tapeColor: '#F3C4CB',
     tilt: -2.5,
     note: {
-      headline: 'The Hug 🥂',
+      headline: 'Our Wedding Day 🥂',
       body:
-        'Remember clinking glasses? I remember looking around the room and thinking our whole ' +
-        'future was right there. Looking at this photo, I can just feel your arms. It was ' +
-        'perfect. I can’t wait to hold you like this again. For now, maybe this little corner helps.',
+        'Remember the running around to make this day happen? I remember the stress of the clinics, ' +
+        'the paperwork, finding the venue, so on... Looking at this photo, I know I would do it all over again. ' +
+        'I can’t wait to see you again, and feel your embrace. For now, maybe this little corner helps.',
     },
   },
   {
     id: 'memory3',
-    scene: 'picnic',
-    title: 'Where We Came From',
+    scene: 'proposal',
+    title: 'Day I proposed (officially 😉)',
     emoji: '🌍',
     photo: 'images/original3.jpg',
     lineArt: 'images/memory3-lines.jpg',
     tapeColor: '#C3D5BC',
     tilt: 1.8,
     note: {
-      headline: 'Where We Came From 🌍',
+      headline: 'Day I proposed (officially 😉)',
       body:
-        'We look so genuine here. I love learning our stories together. This photo makes me feel ' +
-        'connected to everything that brought us both to this single point. I’m just so glad our ' +
-        'paths crossed. Missing you, my love.',
+        'We look so in love here. I love learning our stories together. This photo makes me feel ' +
+        ' so many emotions, remember the proposal, I was covered with sweat underneath. ' +
+        ' You look so beautiful here, your taste in outfits is amazing and I love how you are holding my hand',
     },
   },
   {
     id: 'memory1',
-    scene: 'movieNight',
-    title: 'Casual Laughter',
+    scene: 'first date',
+    title: 'Our Third Date',
     emoji: '🌙',
     photo: 'images/original1.jpg',
     lineArt: 'images/memory1-lines.jpg',
     tapeColor: '#F6E3A8',
     tilt: -1.2,
     note: {
-      headline: 'Casual Laughter 🌙',
+      headline: 'Our Third Date 🌙',
       body:
-        'Just a casual night, but your smile lit up that whole area. I love this casual, happy ' +
-        'look. We don’t need much. This whole photo just feels like peace. Thinking of your laugh.',
+        'Just a casual night, but your smile lit up that whole night. I love this casual, happy ' +
+        'look. We don’t need much. This whole photo just feels like peace. Thinking of your laugh. ' +
+        'Also thinking of the first time I kissed you. I can’t wait to do that again. Missing you, my love.',
     },
   },
 ]
@@ -78,7 +79,7 @@ export const encouragements = [
   'Somewhere far away, I am rooting for you.',
   'Slow is perfectly allowed here.',
   'This corner of the internet is only yours.',
-  'If it helps: I could not solve it either 😅',
+  'If it helps: it took me a while too 😅',
 ]
 
 /** Shown in the puzzle sidebar when a memory has no `hint` of its own. */
@@ -88,6 +89,7 @@ export const defaultHint = 'No timer, no score. Just you, sixteen little pieces,
 export const greetings = [
   'I built you a small, quiet place.',
   'For when the day has been a lot.',
+  'And the real me is a little annoying',
   'A little corner that is only yours.',
   'Made entirely of missing you.',
 ]
