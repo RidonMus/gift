@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* A faint fibrous paper grain, inlined so the app stays offline-friendly. */
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+    /* Never let a stray drag rubber-band the page while she is colouring. */
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Handwriting looks best a touch larger and looser than body copy. */
+  .font-hand {
+    letter-spacing: 0.01em;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  /* ---- Hand-drawn shapes -------------------------------------------------
+     Lopsided border radii are what sell the "someone sketched this" feel.
+     Three variants so repeated elements never look stamped from one mould. */
+  .rounded-doodle {
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  }
+  .rounded-doodle-alt {
+    border-radius: 15px 225px 15px 255px / 225px 15px 255px 15px;
+  }
+  .rounded-blob {
+    border-radius: 62% 38% 46% 54% / 54% 43% 57% 46%;
+  }
+  .rounded-card {
+    border-radius: 28px 42px 30px 46px / 44px 28px 48px 30px;
+  }
+  .rounded-pebble {
+    border-radius: 18px 26px 20px 28px / 26px 18px 28px 20px;
+  }
+
+  .paper-grain {
+    position: relative;
+  }
+  .paper-grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--paper-grain);
+    mix-blend-mode: multiply;
+    opacity: 0.5;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* A sketched underline that sits under headings like a marker swipe. */
+  .marker-underline {
+    background-image: linear-gradient(transparent 62%, rgba(243, 196, 203, 0.75) 62%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    padding: 0 0.15em;
+  }
+
+  /* Washi tape corners for the scrapbook look. */
+  .washi {
+    position: absolute;
+    width: 74px;
+    height: 26px;
+    opacity: 0.75;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(60, 58, 56, 0.12);
+  }
+}
+
+@layer utilities {
+  /* Applied to any surface that receives finger / Apple Pencil input so iPad
+     Safari stops trying to scroll or zoom the page underneath the stroke. */
+  .no-touch-scroll {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .press-soft {
+    transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 160ms ease;
+  }
+  .press-soft:active {
+    transform: translateY(2px) scale(0.98);
+  }
+}
+
+/* Respect the "reduce motion" switch — this app is meant to be calming. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
