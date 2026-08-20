@@ -10,9 +10,9 @@ When you want to swap in your own artwork, drop files in with these names:
 | `memory1.jpg` | Colour picture for **The Rainy Window** (the puzzle image) |
 | `memory2.jpg` | Colour picture for **Movie Night** |
 | `memory3.jpg` | Colour picture for **The Picnic** |
-| `memory1-lines.svg` | Optional line art for the same memory's colouring page |
-| `memory2-lines.svg` | " |
-| `memory3-lines.svg` | " |
+| `memory1-lines.svg` **or** `memory1-lines.jpg`/`.png` | Optional line art for the same memory's colouring page |
+| `memory2-lines.svg` / `.jpg` | " |
+| `memory3-lines.svg` / `.jpg` | " |
 
 The app checks for each file at load time and uses it if it is there. If it is
 not, it falls back to the built-in drawing without complaining. (You will see a
@@ -32,6 +32,25 @@ app.
 ## Line art
 
 Only needed if you want the colouring page to differ from the built-in scene.
+Two formats work:
+
+### A photo run through an outline filter (JPG/PNG)
+
+The simplest option if you've turned a real photo into a black-and-white
+outline drawing (an AI outline filter, a Procreate trace, etc.) — just name it
+`memory1-lines.jpg` and drop it in. Use a **square** image, same as the photo,
+since the app stretches it to a square canvas both for display and for finding
+the regions.
+
+There's no manual work here: the app scans the picture itself, finds every
+enclosed patch of white bounded by dark lines, and turns each one into a
+tappable region — a sleeve, a button, a strand of hair, all separately
+fillable, the same way they would be in a printed colouring book. Nothing to
+label or trace by hand.
+
+### Hand-authored SVG
+
+For art you're drawing yourself (or the built-in scenes, which work this way).
 It must be an SVG whose fillable shapes carry a `data-fill` attribute:
 
 ```svg
