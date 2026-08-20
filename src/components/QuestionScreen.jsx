@@ -21,8 +21,8 @@ const NO_STAGES = [
 const FINAL_STAGE = NO_STAGES.length - 1
 
 const CONFESSION = [
-  "You're stuck with me all the way from Toronto to Tashkent.",
-  'My meme game is too strong.',
+  "You're stuck with me all the way even on the other side of the world.",
+  'My jokes are too funny.',
   'I built this entire app just to see you smile.',
   'Because I love you most. 🥰',
 ]
@@ -239,7 +239,7 @@ function ConfessionModal({ onClose, onBack }) {
         <h2 className="font-hand text-5xl font-bold leading-tight text-ink">I knew it! ❤️</h2>
 
         <p className="mt-3 font-body text-base leading-relaxed text-ink-soft sm:text-lg">
-          Impossible. Go solve some puzzles, smarty-pants. Also, you couldn’t click No because:
+          Impossible. Go solve some puzzles my love. Also, you couldn’t click No because:
         </p>
 
         <ol className="mt-4 space-y-2.5">
@@ -278,7 +278,7 @@ function LoveBanner({ name, onBack }) {
         </h1>
 
         <p className="mt-5 font-body text-base leading-relaxed text-ink-soft sm:text-lg">
-          That was never really a question — but it was very nice to hear anyway. Thank you for
+          That was never really a question, but it was very nice to hear anyway. Thank you for
           pressing the honest button.
         </p>
 

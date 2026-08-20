@@ -28,12 +28,13 @@ export default function WelcomeScreen({ completed, onPick, onAskQuestion, name =
           </h1>
 
           <p className="mt-5 max-w-xl font-body text-base leading-relaxed text-ink-soft sm:text-lg">
-            {greeting} There is no score here, no timer, and nothing you can get wrong. Put a memory
-            back together, read what I left inside it, then colour it in however you like.
+            {greeting} There is no score here, no timer, and no annoying people 😂. Put a memory
+            back together, read what I left inside it, then colour it in however you like. I miss you, 
+            and I hope this little corner of the internet makes you feel a little less lonely.
           </p>
 
           <p className="mt-4 font-hand text-3xl text-blush-deep sm:text-4xl">
-            Miss you more than usual today. ❤️
+            Miss you and I love you. ❤️
           </p>
 
           <div className="pointer-events-none absolute -bottom-4 -right-3 animate-float-soft text-4xl sm:text-5xl">
@@ -54,7 +55,7 @@ export default function WelcomeScreen({ completed, onPick, onAskQuestion, name =
           </span>
           <span className="ml-2 inline-block animate-float-soft text-2xl">💌</span>
           <span className="mt-0.5 block font-hand text-xl text-ink-faint">
-            it will only take a second, promise
+            (I promise it’s not a quiz)
           </span>
         </button>
       </div>
@@ -88,7 +89,7 @@ export default function WelcomeScreen({ completed, onPick, onAskQuestion, name =
       </div>
 
       <p className="mt-16 text-center font-hand text-2xl text-ink-faint">
-        made by hand, from far away, for you
+        made by Nodir, from far away, for you 💌
       </p>
     </div>
   )

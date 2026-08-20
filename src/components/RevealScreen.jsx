@@ -86,7 +86,7 @@ export default function RevealScreen({ memory, onColor, onBack }) {
 
       <p className="mt-6 max-w-md text-center font-body text-sm leading-relaxed text-ink-faint">
         Next up: the same drawing, but empty. Fill it in however you feel — there is no correct
-        version of this and there never was.
+        version of this and there never was. This is easier than your german coloring book 😂
       </p>
     </div>
   )
