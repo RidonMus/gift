@@ -36,31 +36,60 @@ export function usePuzzleImage(memory) {
   return src
 }
 
+const RASTER_EXT = /\.(jpe?g|png|webp)$/i
+
 /**
- * The two SVG sheets that make up a colouring page.
+ * What kind of colouring page `memory.lineArt` points at, resolved once so
+ * the coloring screen doesn't have to guess.
  *
- * A custom file at `memory.lineArt` takes over if it exists *and* carries
- * `data-fill` attributes — without those there would be nothing to tap-fill,
- * so we ignore it rather than hand her a page that does not respond.
+ * Three outcomes:
+ *   'vector-custom' — an SVG with data-fill regions, drawn by hand
+ *   'raster-photo'  — a JPG/PNG run through an outline filter (no shapes to
+ *                      hang a region on, so ColoringScreen finds them itself
+ *                      via useRasterLineArt / buildRegionMap)
+ *   'vector-builtin' — nothing usable was found; fall back to the built-in scene
+ *
+ * A raster file only needs to exist to qualify — unlike the SVG path there is
+ * no content to sniff, since region-finding happens on pixels, not markup.
  */
-export function useLineArt(memory, fills) {
-  const [custom, setCustom] = useState(null)
+export function useLineArtSource(memory) {
+  const [resolved, setResolved] = useState(null)
 
   useEffect(() => {
     let cancelled = false
-    setCustom(null)
+    setResolved(null)
 
     const url = asset(memory.lineArt)
-    if (!url) return undefined
+    if (!url) {
+      setResolved({ mode: 'vector-builtin' })
+      return undefined
+    }
+
+    if (RASTER_EXT.test(url)) {
+      probeImage(url)
+        .then(() => {
+          if (!cancelled) setResolved({ mode: 'raster-photo', src: url })
+        })
+        .catch(() => {
+          if (!cancelled) setResolved({ mode: 'vector-builtin' })
+        })
+      return () => {
+        cancelled = true
+      }
+    }
 
     fetch(url)
       .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
       .then((text) => {
         if (cancelled) return
-        if (text.includes('data-fill') && text.includes('<svg')) setCustom(text)
+        if (text.includes('data-fill') && text.includes('<svg')) {
+          setResolved({ mode: 'vector-custom', markup: text })
+        } else {
+          setResolved({ mode: 'vector-builtin' })
+        }
       })
       .catch(() => {
-        /* Fall back to the built-in scene. */
+        if (!cancelled) setResolved({ mode: 'vector-builtin' })
       })
 
     return () => {
@@ -68,19 +97,28 @@ export function useLineArt(memory, fills) {
     }
   }, [memory.id, memory.lineArt])
 
+  return resolved
+}
+
+/**
+ * The two SVG sheets for a vector colouring page (built-in or custom).
+ * Not meaningful in 'raster-photo' mode — ColoringScreen builds its layers
+ * differently there, straight from the photo and its region map.
+ */
+export function useVectorLineArt(memory, source, fills) {
   return useMemo(() => {
-    if (custom) {
+    if (source?.mode === 'vector-custom') {
       return {
-        fillLayer: withFills(stripStrokes(custom), fills, 'transparent'),
+        fillLayer: withFills(stripStrokes(source.markup), fills, 'transparent'),
         // Flat white, to be composited with multiply — see sceneInkLayer.
-        inkLayer: withFills(custom, null, '#FFFFFF'),
+        inkLayer: withFills(source.markup, null, '#FFFFFF'),
       }
     }
     return {
       fillLayer: sceneFillLayer(memory.scene, fills),
       inkLayer: sceneInkLayer(memory.scene),
     }
-  }, [custom, memory.scene, fills])
+  }, [source, memory.scene, fills])
 }
 
 /**

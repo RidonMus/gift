@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ColorPalette, { PALETTE } from './ColorPalette'
 import DoodleButton from './DoodleButton'
-import { useLineArt } from '../hooks/useArtwork'
+import { useLineArtSource, useVectorLineArt } from '../hooks/useArtwork'
+import { useRasterLineArt } from '../hooks/useRasterLineArt'
 import { useStickyState, useTransientMessage } from '../hooks/useStickyState'
 import { tinyCheer } from '../utils/celebrate'
+import { paintFillLayer } from '../utils/rasterRegions'
 
 /* The canvas always thinks in a 1000x1000 space and is scaled by CSS, so
- * strokes look identical whether she is on a phone, an iPad, or a laptop. */
+ * strokes look identical whether she is on a phone, an iPad, or a laptop.
+ * Raster region-labeling is built at this same resolution — see
+ * useRasterLineArt — so a tap coordinate and a region label always agree
+ * without any rescaling. */
 const CANVAS_SIZE = 1000
 const MAX_HISTORY = 24
 /* A very large drawing is not worth blowing the localStorage quota over. */
@@ -38,6 +43,15 @@ const TOOL_HINTS = {
  *
  * That order is what makes it feel like real colouring: brushwork covers the
  * fills, but the outlines stay crisp on top of both.
+ *
+ * The picture itself comes in two flavours. Hand-drawn art (built-in, or a
+ * custom SVG someone authored) already has named `data-fill` shapes to tap.
+ * A photo run through an outline filter does not — there is nothing but black
+ * lines on a white JPEG — so for that case we find the shapes ourselves once,
+ * up front, via useRasterLineArt, and tap-to-fill becomes "which label is
+ * under this pixel" instead of "which SVG element is under this point".
+ * Everything downstream of that (brushing, erasing, undo, saving) doesn't
+ * care which kind of picture it's looking at.
  */
 export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }) {
   const fillsKey = `cozy:fills:${memory.id}`
@@ -52,10 +66,15 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
   const [savedImage, setSavedImage] = useState(null)
   const [toast, showToast] = useTransientMessage()
 
-  const { fillLayer, inkLayer } = useLineArt(memory, fills)
+  const source = useLineArtSource(memory)
+  const vectorLayers = useVectorLineArt(memory, source, fills)
+  const isRaster = source?.mode === 'raster-photo'
+  const raster = useRasterLineArt(isRaster ? source.src : null, CANVAS_SIZE)
+  const rasterReady = !isRaster || !!raster
 
   const canvasRef = useRef(null)
   const ctxRef = useRef(null)
+  const fillCanvasRef = useRef(null)
   const inkRef = useRef(null)
   const overlayRef = useRef(null)
   const gestureRef = useRef(null)
@@ -88,6 +107,18 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
       cancelled = true
     }
   }, [strokesKey])
+
+  /* ---- paint the raster fill layer whenever her colours (or the region
+     map) change. Vector mode does this for free via dangerouslySetInnerHTML,
+     since sceneFillLayer/withFills already bake `fills` into the markup. --- */
+  useEffect(() => {
+    if (!isRaster || !raster) return
+    const canvas = fillCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    paintFillLayer(ctx, raster.regionMap, fills)
+  }, [isRaster, raster, fills])
 
   const persistStrokes = useCallback(() => {
     try {
@@ -154,16 +185,29 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
     }
   }, [])
 
-  /** Which outlined shape is under this screen point, if any. */
-  const regionAt = useCallback((clientX, clientY) => {
-    const stack = document.elementsFromPoint(clientX, clientY)
-    for (const el of stack) {
-      if (el.hasAttribute?.('data-fill') && inkRef.current?.contains(el)) {
-        return { id: el.getAttribute('data-fill'), label: el.getAttribute('data-label') }
+  /**
+   * Which fillable shape is under this screen point, if any.
+   * Raster pictures look it up in the pre-built label map; hand-drawn ones
+   * hit-test the actual SVG elements, which also hands back a nice label.
+   */
+  const regionAt = useCallback(
+    (clientX, clientY) => {
+      if (isRaster) {
+        if (!raster) return null
+        const p = toCanvas(clientX, clientY)
+        const label = raster.regionMap.labelAt(p.x, p.y)
+        return label ? { id: label, label: null } : null
       }
-    }
-    return null
-  }, [])
+      const stack = document.elementsFromPoint(clientX, clientY)
+      for (const el of stack) {
+        if (el.hasAttribute?.('data-fill') && inkRef.current?.contains(el)) {
+          return { id: el.getAttribute('data-fill'), label: el.getAttribute('data-label') }
+        }
+      }
+      return null
+    },
+    [isRaster, raster, toCanvas],
+  )
 
   /** Apple Pencil reports real pressure; everything else gets a sensible middle. */
   const widthFor = useCallback(
@@ -178,6 +222,7 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
 
   const handlePointerDown = useCallback(
     (event) => {
+      if (!rasterReady) return
       event.preventDefault()
       // Capture keeps a stroke alive if her finger wanders off the artboard.
       // It throws if the pointer was already released, which is harmless.
@@ -216,7 +261,7 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
       ctx.arc(point.x, point.y, ctx.lineWidth / 2, 0, Math.PI * 2)
       ctx.fill()
     },
-    [color, pushHistory, regionAt, setFills, showToast, toCanvas, tool, widthFor],
+    [color, pushHistory, regionAt, rasterReady, setFills, showToast, toCanvas, tool, widthFor],
   )
 
   const handlePointerMove = useCallback(
@@ -293,15 +338,24 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
       ctx.fillStyle = '#FBF9F5'
       ctx.fillRect(0, 0, out.width, out.height)
 
-      const toUri = (svg) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
-
-      // Same three sheets, same order — and the same multiply blend for the
-      // ink, so the exported PNG matches the screen exactly.
-      ctx.drawImage(await loadImage(toUri(fillLayer)), pad, pad, ART, ART)
-      ctx.drawImage(canvasRef.current, pad, pad, ART, ART)
-      ctx.globalCompositeOperation = 'multiply'
-      ctx.drawImage(await loadImage(toUri(inkLayer)), pad, pad, ART, ART)
-      ctx.globalCompositeOperation = 'source-over'
+      if (isRaster && raster) {
+        // Same three sheets as the screen, straight from the photo and the
+        // canvas we already paint into — no SVG round-trip needed.
+        ctx.drawImage(fillCanvasRef.current, pad, pad, ART, ART)
+        ctx.drawImage(canvasRef.current, pad, pad, ART, ART)
+        ctx.globalCompositeOperation = 'multiply'
+        ctx.drawImage(raster.image, pad, pad, ART, ART)
+        ctx.globalCompositeOperation = 'source-over'
+      } else {
+        const toUri = (svg) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+        // Same three sheets, same order — and the same multiply blend for the
+        // ink, so the exported PNG matches the screen exactly.
+        ctx.drawImage(await loadImage(toUri(vectorLayers.fillLayer)), pad, pad, ART, ART)
+        ctx.drawImage(canvasRef.current, pad, pad, ART, ART)
+        ctx.globalCompositeOperation = 'multiply'
+        ctx.drawImage(await loadImage(toUri(vectorLayers.inkLayer)), pad, pad, ART, ART)
+        ctx.globalCompositeOperation = 'source-over'
+      }
 
       try {
         await document.fonts.ready
@@ -324,7 +378,7 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
     } finally {
       setSaving(false)
     }
-  }, [artistName, fillLayer, inkLayer, memory.title, showToast])
+  }, [artistName, isRaster, raster, memory.title, showToast, vectorLayers])
 
   const filledCount = Object.keys(fills).length
 
@@ -352,11 +406,22 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
         {/* `isolate` keeps the ink layer's multiply blend inside the artboard
             instead of letting it darken the page behind it. */}
         <div className="relative isolate aspect-square w-full overflow-hidden rounded-card border-[3px] border-ink/75 bg-[#FEFCF8] shadow-sketch-lg">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-0 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: fillLayer }}
-          />
+          {isRaster ? (
+            <canvas
+              ref={fillCanvasRef}
+              width={CANVAS_SIZE}
+              height={CANVAS_SIZE}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
+              dangerouslySetInnerHTML={{ __html: vectorLayers.fillLayer }}
+            />
+          )}
+
           <canvas
             ref={canvasRef}
             width={CANVAS_SIZE}
@@ -364,13 +429,28 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 z-10 h-full w-full"
           />
-          <div
-            ref={inkRef}
-            aria-hidden="true"
-            style={{ mixBlendMode: 'multiply' }}
-            className="absolute inset-0 z-20 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: inkLayer }}
-          />
+
+          {isRaster ? (
+            // object-fill (stretch, not crop) so this lines up pixel-for-pixel
+            // with buildRegionMap, which draws the same image the same way.
+            <img
+              src={source.src}
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+              style={{ mixBlendMode: 'multiply' }}
+              className="pointer-events-none absolute inset-0 z-20 h-full w-full select-none object-fill"
+            />
+          ) : (
+            <div
+              ref={inkRef}
+              aria-hidden="true"
+              style={{ mixBlendMode: 'multiply' }}
+              className="absolute inset-0 z-20 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
+              dangerouslySetInnerHTML={{ __html: vectorLayers.inkLayer }}
+            />
+          )}
+
           <div
             ref={overlayRef}
             role="application"
@@ -382,6 +462,17 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
             onPointerCancel={handlePointerUp}
             onContextMenu={(e) => e.preventDefault()}
           />
+
+          {!rasterReady && (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 z-40 flex items-center justify-center bg-paper/70 backdrop-blur-[2px]"
+            >
+              <p className="animate-pulse font-hand text-2xl text-ink-faint">
+                getting your drawing ready ✨
+              </p>
+            </div>
+          )}
         </div>
 
         {/* a small floating note about the active tool */}
