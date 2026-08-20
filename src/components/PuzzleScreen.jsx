@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PuzzleBoard from './PuzzleBoard'
 import DoodleButton from './DoodleButton'
+import MissingArt from './MissingArt'
 import { usePuzzleImage } from '../hooks/useArtwork'
+import { useFitText } from '../hooks/useFitText'
 import { correctCount, isSolved, shuffleBoard, swapTiles, TILE_COUNT } from '../utils/puzzle'
 import { encouragements, defaultHint } from '../data/memories'
 
@@ -10,7 +12,10 @@ import { encouragements, defaultHint } from '../data/memories'
  * There is no clock anywhere in this component, on purpose.
  */
 export default function PuzzleScreen({ memory, onSolved, onBack }) {
-  const image = usePuzzleImage(memory)
+  const { src: image, missing, file } = usePuzzleImage(memory)
+  // The sidebar is a narrow column on a desktop, so a long title is measured
+  // and shrunk to fit rather than wrapping into the reference photo.
+  const titleRef = useFitText(`${memory.title} ${memory.emoji}`, { max: 36, min: 20 })
   const [board, setBoard] = useState(() => shuffleBoard())
   const [moves, setMoves] = useState(0)
   const [peeking, setPeeking] = useState(false)
@@ -65,7 +70,13 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-12">
         {/* ---- the board ---- */}
         <div className="order-2 mx-auto w-full max-w-[34rem] lg:order-1">
-          <PuzzleBoard board={board} imageSrc={image} solved={solved} onSwap={handleSwap} />
+          {missing ? (
+            <div className="aspect-square w-full overflow-hidden rounded-card border-[3px] border-ink/75 shadow-sketch-lg">
+              <MissingArt file={file} what="photo" />
+            </div>
+          ) : (
+            <PuzzleBoard board={board} imageSrc={image} solved={solved} onSwap={handleSwap} />
+          )}
 
           <p className="mt-5 text-center font-hand text-3xl text-ink transition-opacity duration-500 sm:text-4xl">
             {solved ? 'Oh, look at that. 🥹' : encouragements[cheerIndex]}
@@ -82,18 +93,25 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
           <div className="rounded-card border-[2.5px] border-ink/70 bg-paper p-4 shadow-sketch-lg">
             <span className="washi -top-3 left-6 -rotate-6" style={{ backgroundColor: memory.tapeColor }} />
 
-            <h2 className="font-hand text-4xl font-semibold leading-tight text-ink">
+            <h2
+              ref={titleRef}
+              className="overflow-hidden font-hand text-4xl font-semibold leading-tight text-ink"
+            >
               {memory.title} {memory.emoji}
             </h2>
             {memory.subtitle && <p className="font-hand text-xl text-ink-faint">{memory.subtitle}</p>}
 
-            <div className="mt-3 overflow-hidden rounded-pebble border-2 border-ink/50 bg-paper-deep">
-              <img
-                src={image}
-                alt={`What ${memory.title} should look like`}
-                draggable="false"
-                className="aspect-square w-full select-none object-cover"
-              />
+            <div className="mt-3 aspect-square overflow-hidden rounded-pebble border-2 border-ink/50 bg-paper-deep">
+              {missing ? (
+                <MissingArt file={file} what="photo" className="border-0" />
+              ) : (
+                <img
+                  src={image}
+                  alt={`What ${memory.title} should look like`}
+                  draggable="false"
+                  className="h-full w-full select-none object-cover"
+                />
+              )}
             </div>
             <p className="mt-2 text-center font-hand text-xl text-ink-faint">
               this is where we are heading ↑
@@ -106,14 +124,14 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <DoodleButton size="sm" variant="ghost" onClick={handleShuffle} disabled={solved}>
+              <DoodleButton size="sm" variant="ghost" onClick={handleShuffle} disabled={solved || missing}>
                 🔀 shuffle
               </DoodleButton>
               <DoodleButton
                 size="sm"
                 variant="sky"
                 alt
-                disabled={solved}
+                disabled={solved || missing}
                 onPointerDown={() => setPeeking(true)}
                 onPointerUp={() => setPeeking(false)}
                 onPointerLeave={() => setPeeking(false)}

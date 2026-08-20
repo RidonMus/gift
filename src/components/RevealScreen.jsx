@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import DoodleButton from './DoodleButton'
+import MissingArt from './MissingArt'
 import { usePuzzleImage } from '../hooks/useArtwork'
 import { celebrate } from '../utils/celebrate'
 
@@ -8,7 +9,7 @@ import { celebrate } from '../utils/celebrate'
  * Laid out like a folded letter tucked next to the photo.
  */
 export default function RevealScreen({ memory, onColor, onBack }) {
-  const image = usePuzzleImage(memory)
+  const { src: image, missing, file } = usePuzzleImage(memory)
 
   useEffect(() => {
     // A short beat first, so the confetti lands with the card rather than before it.
@@ -35,12 +36,18 @@ export default function RevealScreen({ memory, onColor, onBack }) {
           {/* the finished picture, framed like a keepsake */}
           <div className="mx-auto w-full max-w-[13rem] -rotate-2">
             <div className="rounded-pebble border-[2.5px] border-ink/60 bg-paper p-2 pb-4 shadow-sketch">
-              <img
-                src={image}
-                alt={memory.title}
-                draggable="false"
-                className="aspect-square w-full select-none rounded-[10px] object-cover"
-              />
+              {missing ? (
+                <div className="aspect-square w-full overflow-hidden rounded-[10px]">
+                  <MissingArt file={file} what="photo" className="border-0" />
+                </div>
+              ) : (
+                <img
+                  src={image}
+                  alt={memory.title}
+                  draggable="false"
+                  className="aspect-square w-full select-none rounded-[10px] object-cover"
+                />
+              )}
               <p className="mt-1.5 text-center font-hand text-xl text-ink-faint">
                 {memory.title} {memory.emoji}
               </p>

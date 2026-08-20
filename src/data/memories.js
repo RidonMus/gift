@@ -7,8 +7,9 @@
  *            reference thumbnail beside the board.
  *   lineArt  the black-and-white version. Becomes the colouring page; the app
  *            finds its fillable regions automatically (see rasterRegions.js).
- *   scene    a built-in hand-drawn scene, used only if the files above are
- *            missing, so the app never shows a broken image.
+ *
+ * Both files are required. If either is missing the app says so plainly
+ * rather than quietly substituting a stand-in drawing.
  *
  * Paths are relative to `public/`, i.e. `images/original1.jpg` resolves to
  * `public/images/original1.jpg`. No leading slash — that keeps the build
@@ -20,7 +21,6 @@
 export const memories = [
   {
     id: 'memory2',
-    scene: 'Wedding',
     title: 'Our wedding day',
     emoji: '🥂',
     photo: 'images/original2.jpg',
@@ -37,9 +37,8 @@ export const memories = [
   },
   {
     id: 'memory3',
-    scene: 'proposal',
     title: 'Day I proposed (officially 😉)',
-    emoji: '🌍',
+    emoji: '',
     photo: 'images/original3.jpg',
     lineArt: 'images/memory3-lines.jpg',
     tapeColor: '#C3D5BC',
@@ -54,7 +53,6 @@ export const memories = [
   },
   {
     id: 'memory1',
-    scene: 'first date',
     title: 'Our Third Date',
     emoji: '🌙',
     photo: 'images/original1.jpg',

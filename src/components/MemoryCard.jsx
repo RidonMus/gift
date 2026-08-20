@@ -1,4 +1,5 @@
 import React from 'react'
+import MissingArt from './MissingArt'
 import { usePuzzleImage } from '../hooks/useArtwork'
 
 /**
@@ -6,7 +7,7 @@ import { usePuzzleImage } from '../hooks/useArtwork'
  * The whole card is the button — easy to hit with a thumb.
  */
 export default function MemoryCard({ memory, index, completed, onPick }) {
-  const image = usePuzzleImage(memory)
+  const { src: image, missing, file } = usePuzzleImage(memory)
 
   return (
     <button
@@ -23,12 +24,18 @@ export default function MemoryCard({ memory, index, completed, onPick }) {
         />
 
         <div className="relative overflow-hidden rounded-pebble border-2 border-ink/50 bg-paper-deep">
-          <img
-            src={image}
-            alt={memory.title}
-            draggable="false"
-            className="aspect-square w-full select-none object-cover"
-          />
+          {missing ? (
+            <div className="aspect-square w-full">
+              <MissingArt file={file} what="photo" className="border-0" />
+            </div>
+          ) : (
+            <img
+              src={image}
+              alt={memory.title}
+              draggable="false"
+              className="aspect-square w-full select-none object-cover"
+            />
+          )}
           {/* a scattered grid line, like the puzzle is waiting inside */}
           <svg
             className="pointer-events-none absolute inset-0 h-full w-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
@@ -36,7 +43,7 @@ export default function MemoryCard({ memory, index, completed, onPick }) {
             preserveAspectRatio="none"
           >
             <g stroke="#FBF9F5" strokeWidth="1.4" strokeLinecap="round" opacity="0.9">
-              <path d="M33.3 2 V98 M66.6 2 V98 M2 33.3 H98 M2 66.6 H98" />
+              <path d="M25 2 V98 M50 2 V98 M75 2 V98 M2 25 H98 M2 50 H98 M2 75 H98" />
             </g>
           </svg>
 

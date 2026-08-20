@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ColorPalette, { PALETTE } from './ColorPalette'
 import DoodleButton from './DoodleButton'
+import MissingArt from './MissingArt'
 import { useLineArtSource, useVectorLineArt } from '../hooks/useArtwork'
 import { useRasterLineArt } from '../hooks/useRasterLineArt'
 import { useStickyState, useTransientMessage } from '../hooks/useStickyState'
@@ -44,14 +45,13 @@ const TOOL_HINTS = {
  * That order is what makes it feel like real colouring: brushwork covers the
  * fills, but the outlines stay crisp on top of both.
  *
- * The picture itself comes in two flavours. Hand-drawn art (built-in, or a
- * custom SVG someone authored) already has named `data-fill` shapes to tap.
- * A photo run through an outline filter does not — there is nothing but black
- * lines on a white JPEG — so for that case we find the shapes ourselves once,
- * up front, via useRasterLineArt, and tap-to-fill becomes "which label is
- * under this pixel" instead of "which SVG element is under this point".
- * Everything downstream of that (brushing, erasing, undo, saving) doesn't
- * care which kind of picture it's looking at.
+ * The picture itself comes in two flavours. A hand-authored SVG already has
+ * named `data-fill` shapes to tap. A photo run through an outline filter does
+ * not — there is nothing but black lines on a white JPEG — so for that case we
+ * find the shapes ourselves once, up front, via useRasterLineArt, and
+ * tap-to-fill becomes "which label is under this pixel" instead of "which SVG
+ * element is under this point". Everything downstream of that (brushing,
+ * erasing, undo, saving) doesn't care which kind of picture it's looking at.
  */
 export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }) {
   const fillsKey = `cozy:fills:${memory.id}`
@@ -67,10 +67,13 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
   const [toast, showToast] = useTransientMessage()
 
   const source = useLineArtSource(memory)
-  const vectorLayers = useVectorLineArt(memory, source, fills)
+  const vectorLayers = useVectorLineArt(source, fills)
   const isRaster = source?.mode === 'raster-photo'
+  const isMissing = source?.mode === 'missing'
   const raster = useRasterLineArt(isRaster ? source.src : null, CANVAS_SIZE)
-  const rasterReady = !isRaster || !!raster
+  // 'ready' means the artboard can accept input: a raster page needs its
+  // regions labelled first, a vector page is ready as soon as it parses.
+  const rasterReady = (!isRaster || !!raster) && !isMissing && !!source
 
   const canvasRef = useRef(null)
   const ctxRef = useRef(null)
@@ -110,7 +113,7 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
 
   /* ---- paint the raster fill layer whenever her colours (or the region
      map) change. Vector mode does this for free via dangerouslySetInnerHTML,
-     since sceneFillLayer/withFills already bake `fills` into the markup. --- */
+     since withFills already bakes `fills` into the markup. ----------------- */
   useEffect(() => {
     if (!isRaster || !raster) return
     const canvas = fillCanvasRef.current
@@ -346,7 +349,7 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
         ctx.globalCompositeOperation = 'multiply'
         ctx.drawImage(raster.image, pad, pad, ART, ART)
         ctx.globalCompositeOperation = 'source-over'
-      } else {
+      } else if (vectorLayers) {
         const toUri = (svg) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
         // Same three sheets, same order — and the same multiply blend for the
         // ink, so the exported PNG matches the screen exactly.
@@ -414,13 +417,13 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 z-0 h-full w-full"
             />
-          ) : (
+          ) : vectorLayers ? (
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 z-0 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
               dangerouslySetInnerHTML={{ __html: vectorLayers.fillLayer }}
             />
-          )}
+          ) : null}
 
           <canvas
             ref={canvasRef}
@@ -441,7 +444,7 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
               style={{ mixBlendMode: 'multiply' }}
               className="pointer-events-none absolute inset-0 z-20 h-full w-full select-none object-fill"
             />
-          ) : (
+          ) : vectorLayers ? (
             <div
               ref={inkRef}
               aria-hidden="true"
@@ -449,7 +452,7 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
               className="absolute inset-0 z-20 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
               dangerouslySetInnerHTML={{ __html: vectorLayers.inkLayer }}
             />
-          )}
+          ) : null}
 
           <div
             ref={overlayRef}
@@ -463,15 +466,21 @@ export default function ColoringScreen({ memory, onBack, artistName = 'Zukhra' }
             onContextMenu={(e) => e.preventDefault()}
           />
 
-          {!rasterReady && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 z-40 flex items-center justify-center bg-paper/70 backdrop-blur-[2px]"
-            >
-              <p className="animate-pulse font-hand text-2xl text-ink-faint">
-                getting your drawing ready ✨
-              </p>
+          {isMissing ? (
+            <div className="absolute inset-0 z-40">
+              <MissingArt file={source.file} what="drawing" className="border-0" />
             </div>
+          ) : (
+            !rasterReady && (
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 z-40 flex items-center justify-center bg-paper/70 backdrop-blur-[2px]"
+              >
+                <p className="animate-pulse font-hand text-2xl text-ink-faint">
+                  getting your drawing ready ✨
+                </p>
+              </div>
+            )
           )}
         </div>
 
