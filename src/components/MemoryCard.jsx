@@ -48,8 +48,12 @@ export default function MemoryCard({ memory, index, completed, onPick }) {
         </div>
 
         <div className="mt-3 px-1 text-center">
-          <h3 className="font-hand text-3xl font-semibold leading-tight text-ink">{memory.title}</h3>
-          <p className="mt-0.5 font-hand text-xl leading-tight text-ink-faint">{memory.subtitle}</p>
+          <h3 className="font-hand text-3xl font-semibold leading-tight text-ink">
+            {memory.title} {memory.emoji}
+          </h3>
+          {memory.subtitle && (
+            <p className="mt-0.5 font-hand text-xl leading-tight text-ink-faint">{memory.subtitle}</p>
+          )}
         </div>
       </div>
     </button>

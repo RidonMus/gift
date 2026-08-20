@@ -21,16 +21,13 @@ const SIZES = {
  *
  * Tap targets are generous by default — this is an iPad app first.
  */
-export default function DoodleButton({
-  children,
-  variant = 'blush',
-  size = 'md',
-  alt = false,
-  className = '',
-  ...props
-}) {
+const DoodleButton = React.forwardRef(function DoodleButton(
+  { children, variant = 'blush', size = 'md', alt = false, className = '', ...props },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type="button"
       className={[
         'font-hand font-semibold leading-none',
@@ -48,4 +45,6 @@ export default function DoodleButton({
       {children}
     </button>
   )
-}
+})
+
+export default DoodleButton

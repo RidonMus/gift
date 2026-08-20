@@ -41,7 +41,9 @@ export default function RevealScreen({ memory, onColor, onBack }) {
                 draggable="false"
                 className="aspect-square w-full select-none rounded-[10px] object-cover"
               />
-              <p className="mt-1.5 text-center font-hand text-xl text-ink-faint">{memory.title}</p>
+              <p className="mt-1.5 text-center font-hand text-xl text-ink-faint">
+                {memory.title} {memory.emoji}
+              </p>
             </div>
           </div>
 
@@ -53,9 +55,11 @@ export default function RevealScreen({ memory, onColor, onBack }) {
 
             <p className="mt-4 font-body text-base leading-relaxed text-ink-soft sm:text-lg">{body}</p>
 
-            <p className="mt-4 font-hand text-3xl leading-snug text-blush-deep sm:text-4xl">
-              {punchline}
-            </p>
+            {punchline && (
+              <p className="mt-4 font-hand text-3xl leading-snug text-blush-deep sm:text-4xl">
+                {punchline}
+              </p>
+            )}
 
             <div className="my-5 flex items-center gap-3" aria-hidden="true">
               <span className="h-px flex-1 bg-ink/15" />
@@ -63,7 +67,7 @@ export default function RevealScreen({ memory, onColor, onBack }) {
               <span className="h-px flex-1 bg-ink/15" />
             </div>
 
-            <p className="font-hand text-2xl text-ink-faint">{signoff}</p>
+            {signoff && <p className="font-hand text-2xl text-ink-faint">{signoff}</p>}
           </div>
         </div>
       </div>

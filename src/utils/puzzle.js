@@ -10,7 +10,10 @@
  * Solved means every tile is sitting in its own position.
  * ------------------------------------------------------------------------- */
 
-export const GRID = 3
+/* 4x4. Everything below is written in terms of GRID, so this is the only
+ * number to change — tileStyle derives the 400% background size and the
+ * 0/33.3/66.6/100% offsets from it. */
+export const GRID = 4
 export const TILE_COUNT = GRID * GRID
 
 export function solvedBoard() {
@@ -40,7 +43,9 @@ export function shuffleBoard() {
       ;[board[i], board[j]] = [board[j], board[i]]
     }
     attempts++
-  } while (correctCount(board) > 2 && attempts < 50)
+    // Reshuffle if we happened to land on (or very near) the finished picture,
+    // so the board never opens looking like it is already done.
+  } while (correctCount(board) > Math.floor(TILE_COUNT / 4) && attempts < 50)
   return board
 }
 

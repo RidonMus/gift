@@ -36,9 +36,10 @@ subfolder (like a GitHub Pages project site) without any extra configuration.
 | Phase | Screen | What happens |
 | --- | --- | --- |
 | 1 | **Welcome** | A handwritten note, then three memories taped in like scrapbook photos |
-| 2 | **Puzzle** | A 3×3 tile-swap board with a reference picture and rotating encouragement |
+| 2 | **Puzzle** | A 4×4 tile-swap board with a reference picture and rotating encouragement |
 | 3 | **Reveal** | Soft pastel confetti, then the note that was hiding behind the puzzle |
-| 4 | **Colouring** | The same drawing, empty, with a palette, brush, eraser, and a save button |
+| 4 | **Colouring** | The same photo as line art, with a palette, brush, eraser, and a save button |
+| — | **A Quick Question** | Reachable from the welcome screen. One question, two buttons, one of which has opinions about being clicked |
 
 Progress is kept in `localStorage`: which memories are unlocked, and the colours
 in each drawing. Closing the tab does not lose her work.
@@ -77,7 +78,8 @@ src/
 │   ├── PuzzleBoard.jsx          the 3×3 grid itself
 │   ├── RevealScreen.jsx         confetti + the love note
 │   ├── ColoringScreen.jsx       the colouring book
-│   └── ColorPalette.jsx         colours, tools, brush sizes
+│   ├── ColorPalette.jsx         colours, tools, brush sizes
+│   └── QuestionScreen.jsx       the question with only one answer
 ├── hooks/
 │   ├── useArtwork.js            photo-or-fallback, and the two SVG sheets
 │   └── useStickyState.js        localStorage-backed state
@@ -106,10 +108,21 @@ hillside's outline, exactly as it does in the colour version. Leave the regions
 transparent instead and every background line ghosts straight through every
 foreground object — which is what turns a colouring page into spaghetti.
 
-**Swap, not slide.** A sliding 3×3 puzzle hides a ninth of the picture behind the
-empty square and can be shuffled into states that cannot be solved. A swap board
+**Swap, not slide.** A sliding puzzle hides one square of the picture behind the
+empty tile and can be shuffled into states that cannot be solved. A swap board
 always shows the whole image and is always one tap from being finished. That is
-the right kind of puzzle for a relaxing evening.
+the right kind of puzzle for a relaxing evening. The grid is 4×4; `GRID` in
+`src/utils/puzzle.js` is the only number that sets it, and the board CSS and the
+tiles' `backgroundSize` are both derived from it.
+
+**The No button works on a finger, not just a cursor.** The gag on the question
+page is driven by hover — which does not exist on an iPad. If it only listened
+for `pointerenter`, the joke would collapse into a perfectly clickable "No" on
+the one device this was built for. So a mouse triggers a dodge on hover, and
+touch triggers the same dodge on `pointerdown`, cancelled before it can become a
+click. Its escape route also avoids only the Yes button rather than the whole
+card: fencing off the card left almost no legal spot on a narrow screen, and the
+button just gave up in the same corner every time.
 
 ### On the iPad specifically
 

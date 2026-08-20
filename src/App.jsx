@@ -4,6 +4,7 @@ import WelcomeScreen from './components/WelcomeScreen'
 import PuzzleScreen from './components/PuzzleScreen'
 import RevealScreen from './components/RevealScreen'
 import ColoringScreen from './components/ColoringScreen'
+import QuestionScreen from './components/QuestionScreen'
 import { memories } from './data/memories'
 import { useStickyState } from './hooks/useStickyState'
 
@@ -11,8 +12,8 @@ import { useStickyState } from './hooks/useStickyState'
 const HER_NAME = 'Zukhra'
 
 /* gallery -> puzzle -> reveal -> coloring, and back to the gallery whenever
- * she likes. Four phases is the whole router; anything more would be overkill
- * for a single-page gift. */
+ * she likes, plus 'question' hanging off the gallery on its own. Five phases
+ * is the whole router; anything more would be overkill for a one-page gift. */
 export default function App() {
   const [phase, setPhase] = useState('gallery')
   const [activeId, setActiveId] = useState(null)
@@ -46,8 +47,15 @@ export default function App() {
 
       <main key={`${phase}-${activeId ?? 'none'}`} className="animate-fade-up">
         {phase === 'gallery' && (
-          <WelcomeScreen name={HER_NAME} completed={completed} onPick={openMemory} />
+          <WelcomeScreen
+            name={HER_NAME}
+            completed={completed}
+            onPick={openMemory}
+            onAskQuestion={() => setPhase('question')}
+          />
         )}
+
+        {phase === 'question' && <QuestionScreen name={HER_NAME} onBack={backToGallery} />}
 
         {phase === 'puzzle' && memory && (
           <PuzzleScreen memory={memory} onSolved={handleSolved} onBack={backToGallery} />

@@ -3,74 +3,69 @@
  *
  * Each memory is one puzzle + one love note + one colouring page.
  *
- * `photo` / `lineArt` are optional. Point them at files you drop into
- * `public/images/` and they take over; leave them missing (or misspelled, or
- * not uploaded yet) and the app quietly falls back to the built-in hand-drawn
- * scene named by `scene`. Nothing ever renders as a broken image.
+ *   photo    the full-colour picture. Drives the 4x4 puzzle and the little
+ *            reference thumbnail beside the board.
+ *   lineArt  the black-and-white version. Becomes the colouring page; the app
+ *            finds its fillable regions automatically (see rasterRegions.js).
+ *   scene    a built-in hand-drawn scene, used only if the files above are
+ *            missing, so the app never shows a broken image.
  *
- * Paths are relative to `public/`, i.e. `images/memory1.jpg` resolves to
- * `public/images/memory1.jpg`. No leading slash — that keeps the build working
- * on GitHub Pages project sites, which are served from a subfolder.
+ * Paths are relative to `public/`, i.e. `images/original1.jpg` resolves to
+ * `public/images/original1.jpg`. No leading slash — that keeps the build
+ * working on GitHub Pages, which serves this site from the /gift/ subfolder.
+ *
+ * The order of this array is the order she sees in the gallery.
  * ------------------------------------------------------------------------- */
 
 export const memories = [
   {
-    id: 'cocoa',
+    id: 'memory2',
     scene: 'cocoa',
-    title: 'The Rainy Window',
-    subtitle: 'two mugs, one blanket, zero plans',
-    photo: 'images/memory1.jpg',
-    lineArt: 'images/memory1-lines.jpg',
+    title: 'The Hug',
+    emoji: '🥂',
+    photo: 'images/original2.jpg',
+    lineArt: 'images/memory2-lines.jpg',
     tapeColor: '#F3C4CB',
     tilt: -2.5,
-    // Shown while she is working on the puzzle.
-    hint: 'Take your time, my love. The cocoa is not going anywhere. ❤️',
-    // Shown on the reveal screen once the puzzle clicks into place.
     note: {
-      headline: 'You put us back together. ✨',
+      headline: 'The Hug 🥂',
       body:
-        'Do you remember this one? You said you would "just have one sip" of my cocoa ' +
-        'and then returned an empty mug and absolutely no remorse.',
-      punchline: 'I would let you do it again. Every single time.',
-      signoff: 'Still yours, even from this far away.',
+        'Remember clinking glasses? I remember looking around the room and thinking our whole ' +
+        'future was right there. Looking at this photo, I can just feel your arms. It was ' +
+        'perfect. I can’t wait to hold you like this again. For now, maybe this little corner helps.',
     },
   },
   {
-    id: 'movieNight',
-    scene: 'movieNight',
-    title: 'Movie Night',
-    subtitle: 'you fell asleep in 11 minutes',
-    photo: 'images/memory2.jpg',
-    lineArt: 'images/memory2-lines.jpg',
+    id: 'memory3',
+    scene: 'picnic',
+    title: 'Where We Came From',
+    emoji: '🌍',
+    photo: 'images/original3.jpg',
+    lineArt: 'images/memory3-lines.jpg',
     tapeColor: '#C3D5BC',
     tilt: 1.8,
-    hint: 'No timer, no score. Just you and some slightly muddled cats. 🐈',
     note: {
-      headline: 'Reunited at last! 🍿',
+      headline: 'Where We Came From 🌍',
       body:
-        'The film we picked so carefully, paused at 00:11:04, where it has remained ' +
-        'ever since. You claim you "were just resting your eyes". The cats testified otherwise.',
-      punchline: 'Best eleven minutes of cinema I have ever had.',
-      signoff: 'Save me a spot on the couch.',
+        'We look so genuine here. I love learning our stories together. This photo makes me feel ' +
+        'connected to everything that brought us both to this single point. I’m just so glad our ' +
+        'paths crossed. Missing you, my love.',
     },
   },
   {
-    id: 'picnic',
-    scene: 'picnic',
-    title: 'The Picnic',
-    subtitle: 'the wind took the napkins',
-    photo: 'images/memory3.jpg',
-    lineArt: 'images/memory3-lines.jpg',
+    id: 'memory1',
+    scene: 'movieNight',
+    title: 'Casual Laughter',
+    emoji: '🌙',
+    photo: 'images/original1.jpg',
+    lineArt: 'images/memory1-lines.jpg',
     tapeColor: '#F6E3A8',
     tilt: -1.2,
-    hint: 'Slowly, gently. Nobody is counting. 🌿',
     note: {
-      headline: 'Look at that — perfect. 🧺',
+      headline: 'Casual Laughter 🌙',
       body:
-        'We packed for a picnic like we were crossing a desert, and then spent the whole ' +
-        'afternoon chasing one runaway napkin down a hill while the sandwiches went stale.',
-      punchline: 'You laughed so hard you sat in the watermelon. I have never recovered.',
-      signoff: 'Next one is on me. Bring the same laugh.',
+        'Just a casual night, but your smile lit up that whole area. I love this casual, happy ' +
+        'look. We don’t need much. This whole photo just feels like peace. Thinking of your laugh.',
     },
   },
 ]
@@ -85,6 +80,9 @@ export const encouragements = [
   'This corner of the internet is only yours.',
   'If it helps: I could not solve it either 😅',
 ]
+
+/** Shown in the puzzle sidebar when a memory has no `hint` of its own. */
+export const defaultHint = 'No timer, no score. Just you, sixteen little pieces, and me missing you. ❤️'
 
 /** Shown on the welcome screen, one per visit. */
 export const greetings = [

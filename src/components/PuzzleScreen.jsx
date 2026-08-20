@@ -3,7 +3,7 @@ import PuzzleBoard from './PuzzleBoard'
 import DoodleButton from './DoodleButton'
 import { usePuzzleImage } from '../hooks/useArtwork'
 import { correctCount, isSolved, shuffleBoard, swapTiles, TILE_COUNT } from '../utils/puzzle'
-import { encouragements } from '../data/memories'
+import { encouragements, defaultHint } from '../data/memories'
 
 /**
  * Phase 1. A board, a reference photo, and a rotating line of encouragement.
@@ -82,8 +82,10 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
           <div className="rounded-card border-[2.5px] border-ink/70 bg-paper p-4 shadow-sketch-lg">
             <span className="washi -top-3 left-6 -rotate-6" style={{ backgroundColor: memory.tapeColor }} />
 
-            <h2 className="font-hand text-4xl font-semibold leading-tight text-ink">{memory.title}</h2>
-            <p className="font-hand text-xl text-ink-faint">{memory.subtitle}</p>
+            <h2 className="font-hand text-4xl font-semibold leading-tight text-ink">
+              {memory.title} {memory.emoji}
+            </h2>
+            {memory.subtitle && <p className="font-hand text-xl text-ink-faint">{memory.subtitle}</p>}
 
             <div className="mt-3 overflow-hidden rounded-pebble border-2 border-ink/50 bg-paper-deep">
               <img
@@ -98,7 +100,9 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
             </p>
 
             <div className="mt-4 rounded-pebble border-2 border-dashed border-blush bg-blush-soft/50 px-3 py-2.5">
-              <p className="font-body text-sm leading-relaxed text-ink-soft">{memory.hint}</p>
+              <p className="font-body text-sm leading-relaxed text-ink-soft">
+                {memory.hint || defaultHint}
+              </p>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">

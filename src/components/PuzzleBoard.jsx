@@ -44,7 +44,15 @@ export default function PuzzleBoard({ board, imageSrc, solved, onSwap }) {
         solved ? 'ring-4 ring-sage ring-offset-4 ring-offset-paper' : '',
       ].join(' ')}
     >
-      <div className="grid aspect-square w-full grid-cols-3 grid-rows-3 gap-1.5 sm:gap-2">
+      {/* Grid size comes from GRID rather than Tailwind's grid-cols-N, so the
+          board follows puzzle.js instead of needing two places kept in sync. */}
+      <div
+        className="grid aspect-square w-full gap-1 sm:gap-1.5"
+        style={{
+          gridTemplateColumns: `repeat(${GRID}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${GRID}, minmax(0, 1fr))`,
+        }}
+      >
         {board.map((tile, position) => {
           const isSelected = selected === position
           const inPlace = tile === position
@@ -60,12 +68,14 @@ export default function PuzzleBoard({ board, imageSrc, solved, onSwap }) {
               className={[
                 'relative overflow-hidden border-2 bg-paper-deep no-touch-scroll',
                 'transition-all duration-200 ease-out',
-                position % 2 === 0 ? 'rounded-pebble' : 'rounded-doodle-alt',
+                // Sixteen tiles is a lot of shapes on screen; the gentler
+                // pebble radius keeps it from reading as visual noise.
+                position % 2 === 0 ? 'rounded-pebble' : 'rounded-[14px_20px_16px_22px]',
                 solved
                   ? 'border-transparent'
                   : isSelected
-                    ? 'z-10 scale-[1.06] -rotate-2 border-blush-deep shadow-lifted'
-                    : 'border-ink/45 hover:-translate-y-0.5 active:scale-95',
+                    ? 'z-10 scale-[1.08] -rotate-2 border-blush-deep shadow-lifted'
+                    : 'border-ink/40 hover:-translate-y-0.5 active:scale-95',
                 popping.includes(position) ? 'animate-tile-pop' : '',
               ].join(' ')}
             >
@@ -75,7 +85,7 @@ export default function PuzzleBoard({ board, imageSrc, solved, onSwap }) {
               )}
               {isSelected && (
                 <span
-                  className="pointer-events-none absolute inset-0 flex items-center justify-center bg-paper/35 font-hand text-3xl"
+                  className="pointer-events-none absolute inset-0 flex items-center justify-center bg-paper/40 font-hand text-2xl"
                   aria-hidden="true"
                 >
                   ↔

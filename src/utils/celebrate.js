@@ -46,6 +46,31 @@ export function celebrate() {
   }, 520)
 }
 
+/**
+ * The big one, for the only question that matters. Three seconds of confetti
+ * raining from both top corners, plus a heart burst up the middle.
+ */
+export function hugeCelebrate() {
+  if (prefersReducedMotion()) return
+
+  const end = Date.now() + 3000
+  const shared = { colors: COZY_COLORS, disableForReducedMotion: true, ticks: 320 }
+
+  ;(function rain() {
+    confetti({ ...shared, particleCount: 6, angle: 60, spread: 70, startVelocity: 55, origin: { x: 0, y: 0.1 } })
+    confetti({ ...shared, particleCount: 6, angle: 120, spread: 70, startVelocity: 55, origin: { x: 1, y: 0.1 } })
+    if (Date.now() < end) requestAnimationFrame(rain)
+  })()
+
+  const hearts = { ...shared, shapes: ['circle'], scalar: 2, gravity: 0.5, startVelocity: 45 }
+  ;[0, 400, 800, 1400].forEach((delay) =>
+    setTimeout(
+      () => confetti({ ...hearts, particleCount: 40, spread: 100, origin: { x: 0.5, y: 0.7 } }),
+      delay,
+    ),
+  )
+}
+
 /** A single small puff — used when she saves a drawing. */
 export function tinyCheer(origin = { x: 0.5, y: 0.7 }) {
   if (prefersReducedMotion()) return

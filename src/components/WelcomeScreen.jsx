@@ -6,7 +6,7 @@ import { memories, greetings } from '../data/memories'
  * The front door: a handwritten note, then the three memories laid out like
  * photos taped into a journal.
  */
-export default function WelcomeScreen({ completed, onPick, name = 'Zukhra' }) {
+export default function WelcomeScreen({ completed, onPick, onAskQuestion, name = 'Zukhra' }) {
   // One greeting per visit, so it feels a little different each time.
   const greeting = useMemo(() => greetings[Math.floor(Math.random() * greetings.length)], [])
   const allDone = memories.every((m) => completed.includes(m.id))
@@ -40,6 +40,23 @@ export default function WelcomeScreen({ completed, onPick, name = 'Zukhra' }) {
             🫖
           </div>
         </div>
+      </div>
+
+      {/* ---- the one question ---- */}
+      <div className="mt-8 flex justify-center animate-fade-up" style={{ animationDelay: '260ms' }}>
+        <button
+          type="button"
+          onClick={onAskQuestion}
+          className="group relative rounded-doodle-alt border-[2.5px] border-dashed border-blush-deep bg-blush-soft/60 px-7 py-4 shadow-sketch press-soft transition-colors hover:bg-blush-soft focus:outline-none focus-visible:ring-4 focus-visible:ring-butter"
+        >
+          <span className="font-hand text-3xl font-semibold text-ink sm:text-4xl">
+            A Quick Question
+          </span>
+          <span className="ml-2 inline-block animate-float-soft text-2xl">💌</span>
+          <span className="mt-0.5 block font-hand text-xl text-ink-faint">
+            it will only take a second, promise
+          </span>
+        </button>
       </div>
 
       {/* ---- the gallery ---- */}
