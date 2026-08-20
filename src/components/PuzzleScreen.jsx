@@ -101,22 +101,6 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
             </h2>
             {memory.subtitle && <p className="font-hand text-xl text-ink-faint">{memory.subtitle}</p>}
 
-            <div className="mt-3 aspect-square overflow-hidden rounded-pebble border-2 border-ink/50 bg-paper-deep">
-              {missing ? (
-                <MissingArt file={file} what="photo" className="border-0" />
-              ) : (
-                <img
-                  src={image}
-                  alt={`What ${memory.title} should look like`}
-                  draggable="false"
-                  className="h-full w-full select-none object-cover"
-                />
-              )}
-            </div>
-            <p className="mt-2 text-center font-hand text-xl text-ink-faint">
-              this is where we are heading ↑
-            </p>
-
             <div className="mt-4 rounded-pebble border-2 border-dashed border-blush bg-blush-soft/50 px-3 py-2.5">
               <p className="font-body text-sm leading-relaxed text-ink-soft">
                 {memory.hint || defaultHint}
@@ -132,12 +116,9 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
                 variant="sky"
                 alt
                 disabled={solved || missing}
-                onPointerDown={() => setPeeking(true)}
-                onPointerUp={() => setPeeking(false)}
-                onPointerLeave={() => setPeeking(false)}
-                onPointerCancel={() => setPeeking(false)}
+                onClick={() => setPeeking((current) => !current)}
               >
-                👀 hold to peek
+                {peeking ? '🙈 tap to hide' : '👀 press to peek'}
               </DoodleButton>
               <span className="ml-auto font-hand text-2xl text-ink-faint">{moves} moves</span>
             </div>
@@ -145,9 +126,14 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
         </aside>
       </div>
 
-      {/* Hold-to-peek: the finished picture, full size, for as long as she holds. */}
+      {/* Press to peek: the finished picture, hidden until she asks for it.
+          Tapping the backdrop closes it too, since there is no "release" to
+          hide it automatically now that it is a toggle rather than a hold. */}
       {peeking && !solved && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/45 p-8 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-ink/45 p-8 backdrop-blur-sm"
+          onClick={() => setPeeking(false)}
+        >
           <img
             src={image}
             alt={memory.title}
