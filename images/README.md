@@ -1,29 +1,35 @@
 # Drop your own pictures here
 
-The app ships with three hand-drawn scenes built into the code, so it looks
-finished the moment you clone it. Nothing here is required.
+Every memory needs two pictures: a colour photo for the puzzle, and a
+black-and-white line-art version for the colouring page. Both are required — if
+one is missing, the app says so in the spot the picture should have been and
+names the file it was looking for.
 
-When you want to swap in your own artwork, drop files in with these names:
+Drop files in with these names:
 
 | File | What it is |
 | --- | --- |
-| `memory1.jpg` | Colour picture for **The Rainy Window** (the puzzle image) |
-| `memory2.jpg` | Colour picture for **Movie Night** |
-| `memory3.jpg` | Colour picture for **The Picnic** |
-| `memory1-lines.svg` **or** `memory1-lines.jpg`/`.png` | Optional line art for the same memory's colouring page |
-| `memory2-lines.svg` / `.jpg` | " |
-| `memory3-lines.svg` / `.jpg` | " |
+| `original1.jpg` | Colour photo — the puzzle picture |
+| `original2.jpg` | " |
+| `original3.jpg` | " |
+| `memory1-lines.jpg` | Line art for the same memory's colouring page (`.png` or a `data-fill` `.svg` also work) |
+| `memory2-lines.jpg` | " |
+| `memory3-lines.jpg` | " |
 
-The app checks for each file at load time and uses it if it is there. If it is
-not, it falls back to the built-in drawing without complaining. (You will see a
-few harmless 404s in the browser console until you add them — that is the check
-happening, not a bug.)
+Which file belongs to which memory is set in
+[`src/data/memories.js`](../../src/data/memories.js) — change the names there if
+you prefer different ones.
+
+The app checks for each file at load time. A missing or unreadable file shows a
+dashed placeholder naming the path it tried, so a typo is obvious without
+opening the console.
 
 ## Photos
 
 Use **square** images. Anything else gets centre-cropped, and the puzzle slices
-the picture into a 3×3 grid, so square is what you want. Around 800×800 to
-1200×1200 is plenty.
+the picture into a 4×4 grid, so square is what you want. Around 1200×1200 to
+1400×1400 is plenty — the board never displays much above 550px, so anything
+larger is bytes she waits on for nothing.
 
 A cartoon-style or illustrated version of a real photo works far better than the
 photo itself — the puzzle tiles read more clearly, and it matches the rest of the
