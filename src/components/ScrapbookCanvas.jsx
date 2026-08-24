@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import DoodleButton from './DoodleButton'
-import { asset } from '../utils/assets'
+import { asset, probeImage } from '../utils/assets'
 import {
   addScrapbookItem,
   fetchScrapbookItems,
@@ -47,11 +47,15 @@ export default function ScrapbookCanvas({ onBack }) {
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
   const [pickingSticker, setPickingSticker] = useState(false)
+  const [addingPhoto, setAddingPhoto] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [photoError, setPhotoError] = useState(null)
   const [toast, setToast] = useState(null)
 
   const wrapRef = useRef(null)
   const boardRef = useRef(null)
   const inputRef = useRef(null)
+  const photoInputRef = useRef(null)
   const dragRef = useRef(null)
   const toastTimer = useRef(null)
   // Read inside pointer handlers, which would otherwise close over a stale
@@ -263,6 +267,35 @@ export default function ScrapbookCanvas({ onBack }) {
     setComposing(false)
   }, [draft, saving, placeNew])
 
+  /**
+   * Check the URL actually resolves to an image before writing the row.
+   *
+   * Without this a mistyped or hotlink-blocked link still gets saved, and the
+   * board grows a permanently broken square that the other person has to
+   * notice and delete. Far kinder to catch it here, while she can still fix
+   * the paste.
+   */
+  const handleSavePhoto = useCallback(async () => {
+    const url = photoUrl.trim()
+    if (!url || saving) return
+
+    setSaving(true)
+    setPhotoError(null)
+
+    try {
+      await probeImage(asset(url))
+    } catch {
+      setSaving(false)
+      setPhotoError('That link did not load as an image. Check it and try again?')
+      return
+    }
+
+    await placeNew('photo', url)
+    setSaving(false)
+    setPhotoUrl('')
+    setAddingPhoto(false)
+  }, [photoUrl, saving, placeNew])
+
   const handleRemove = useCallback(
     async (id) => {
       const snapshot = items
@@ -383,6 +416,57 @@ export default function ScrapbookCanvas({ onBack }) {
                 </DoodleButton>
               </div>
             </div>
+          ) : addingPhoto ? (
+            <div className="animate-pop-in">
+              <label htmlFor="scrap-photo" className="font-hand text-2xl text-ink">
+                Paste an image URL:
+              </label>
+              <input
+                id="scrap-photo"
+                ref={photoInputRef}
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck="false"
+                value={photoUrl}
+                onChange={(e) => {
+                  setPhotoUrl(e.target.value)
+                  setPhotoError(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleSavePhoto()
+                  }
+                  if (e.key === 'Escape') setAddingPhoto(false)
+                }}
+                placeholder="https://…"
+                className="mt-2 w-full rounded-pebble border-2 border-ink/40 bg-paper-deep px-3 py-2 font-body text-base text-ink placeholder:text-ink-faint/70 focus:border-ink/70 focus:outline-none"
+              />
+              <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                <span className="mr-auto max-w-[60%] font-body text-xs leading-snug text-blush-deep">
+                  {photoError}
+                </span>
+                <DoodleButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setAddingPhoto(false)
+                    setPhotoError(null)
+                  }}
+                >
+                  never mind
+                </DoodleButton>
+                <DoodleButton
+                  size="sm"
+                  variant="blush"
+                  onClick={handleSavePhoto}
+                  disabled={!photoUrl.trim() || saving}
+                >
+                  {saving ? 'checking…' : 'Stick it on'}
+                </DoodleButton>
+              </div>
+            </div>
           ) : pickingSticker ? (
             <div className="flex animate-pop-in flex-wrap items-center gap-2">
               <span className="font-hand text-2xl text-ink">pick one —</span>
@@ -417,6 +501,7 @@ export default function ScrapbookCanvas({ onBack }) {
                 onClick={() => {
                   setComposing(true)
                   setPickingSticker(false)
+                  setAddingPhoto(false)
                   setTimeout(() => inputRef.current?.focus(), 60)
                 }}
               >
@@ -429,9 +514,23 @@ export default function ScrapbookCanvas({ onBack }) {
                 onClick={() => {
                   setPickingSticker(true)
                   setComposing(false)
+                  setAddingPhoto(false)
                 }}
               >
                 + Add Sticker
+              </DoodleButton>
+              <DoodleButton
+                size="sm"
+                variant="sky"
+                onClick={() => {
+                  setAddingPhoto(true)
+                  setComposing(false)
+                  setPickingSticker(false)
+                  setPhotoError(null)
+                  setTimeout(() => photoInputRef.current?.focus(), 60)
+                }}
+              >
+                + Add Photo 📸
               </DoodleButton>
               <span className="ml-auto font-hand text-xl text-ink-faint">
                 {items.length} {items.length === 1 ? 'thing' : 'things'} on the page
@@ -513,14 +612,29 @@ function BoardItem({ item, selected, dragging, onPointerDown, onPointerMove, onP
  * resolve against whatever the current document URL happens to be.
  */
 function Polaroid({ item }) {
+  // New photos are checked before they are saved, but a link can still rot
+  // later — an image host expiring, a shared album going private. Show a quiet
+  // note in the frame rather than the browser's broken-image glyph.
+  const [broken, setBroken] = useState(false)
+
   return (
     <div className="select-none bg-white p-2.5 pb-8">
-      <img
-        src={asset(item.content)}
-        alt=""
-        draggable="false"
-        className="pointer-events-none block aspect-square w-full select-none bg-paper-deep object-cover"
-      />
+      {broken ? (
+        <div className="flex aspect-square w-full flex-col items-center justify-center gap-1 bg-paper-deep px-3 text-center">
+          <span className="text-2xl">🖼️</span>
+          <span className="font-hand text-lg leading-tight text-ink-faint">
+            this photo has wandered off
+          </span>
+        </div>
+      ) : (
+        <img
+          src={asset(item.content)}
+          alt=""
+          draggable="false"
+          onError={() => setBroken(true)}
+          className="pointer-events-none block aspect-square w-full select-none bg-paper-deep object-cover"
+        />
+      )}
     </div>
   )
 }
