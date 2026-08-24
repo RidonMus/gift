@@ -71,6 +71,29 @@ export default {
           '50%': { transform: 'scale(1)' },
           '75%': { transform: 'scale(1.12)' },
         },
+        /* The jar rocks on its base, so the origin sits at the bottom. */
+        'jar-shake': {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '15%': { transform: 'rotate(-7deg)' },
+          '30%': { transform: 'rotate(6deg)' },
+          '45%': { transform: 'rotate(-5deg)' },
+          '60%': { transform: 'rotate(4deg)' },
+          '80%': { transform: 'rotate(-2deg)' },
+        },
+        /* A folded slip lifting out of the jar's mouth and tumbling upward. */
+        'paper-fly': {
+          '0%': { opacity: '0', transform: 'translate(-50%, 0) scale(0.35) rotate(0deg)' },
+          '25%': { opacity: '1', transform: 'translate(-50%, -40px) scale(0.6) rotate(-14deg)' },
+          '70%': { opacity: '1', transform: 'translate(-50%, -120px) scale(0.85) rotate(12deg)' },
+          '100%': { opacity: '0', transform: 'translate(-50%, -170px) scale(1.1) rotate(-6deg)' },
+        },
+        /* The note unfolding: a squashed slip springing open into a square. */
+        'note-unfold': {
+          '0%': { opacity: '0', transform: 'scale(0.2, 0.05) rotate(-12deg)' },
+          '45%': { opacity: '1', transform: 'scale(1.04, 0.55) rotate(4deg)' },
+          '70%': { transform: 'scale(0.98, 1.05) rotate(-2deg)' },
+          '100%': { opacity: '1', transform: 'scale(1, 1) rotate(-1deg)' },
+        },
       },
       animation: {
         'float-soft': 'float-soft 6s ease-in-out infinite',
@@ -79,6 +102,9 @@ export default {
         wiggle: 'wiggle 1.6s ease-in-out infinite',
         'tile-pop': 'tile-pop 0.32s ease-out',
         'heart-beat': 'heart-beat 1.8s ease-in-out infinite',
+        'jar-shake': 'jar-shake 0.55s ease-in-out',
+        'paper-fly': 'paper-fly 0.85s ease-out forwards',
+        'note-unfold': 'note-unfold 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
       },
     },
   },

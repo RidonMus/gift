@@ -5,6 +5,7 @@ import PuzzleScreen from './components/PuzzleScreen'
 import RevealScreen from './components/RevealScreen'
 import ColoringScreen from './components/ColoringScreen'
 import QuestionScreen from './components/QuestionScreen'
+import QuestionJar from './components/QuestionJar'
 import { memories } from './data/memories'
 import { useStickyState } from './hooks/useStickyState'
 
@@ -52,10 +53,13 @@ export default function App() {
             completed={completed}
             onPick={openMemory}
             onAskQuestion={() => setPhase('question')}
+            onOpenJar={() => setPhase('jar')}
           />
         )}
 
         {phase === 'question' && <QuestionScreen name={HER_NAME} onBack={backToGallery} />}
+
+        {phase === 'jar' && <QuestionJar onBack={backToGallery} />}
 
         {phase === 'puzzle' && memory && (
           <PuzzleScreen memory={memory} onSolved={handleSolved} onBack={backToGallery} />
