@@ -14,6 +14,7 @@ export default function WelcomeScreen({
   onAskQuestion,
   onOpenJar,
   onOpenTree,
+  onOpenScrapbook,
   name = 'Zukhra',
 }) {
   // One greeting per visit, so it feels a little different each time.
@@ -99,6 +100,18 @@ export default function WelcomeScreen({
           <span className="ml-2 inline-block animate-float-soft text-2xl">🌱</span>
           <span className="mt-0.5 block font-hand text-xl text-ink-faint">
             leave me something to find
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenScrapbook}
+          className="group relative rounded-doodle border-[2.5px] border-dashed border-butter-deep bg-butter-soft/60 px-7 py-4 shadow-sketch press-soft transition-colors hover:bg-butter-soft focus:outline-none focus-visible:ring-4 focus-visible:ring-butter"
+        >
+          <span className="font-hand text-3xl font-semibold text-ink sm:text-4xl">Our Scrapbook</span>
+          <span className="ml-2 inline-block animate-float-soft text-2xl">✂️</span>
+          <span className="mt-0.5 block font-hand text-xl text-ink-faint">
+            stick things wherever you like
           </span>
         </button>
       </div>

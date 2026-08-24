@@ -27,6 +27,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 const TABLE = 'custom_questions'
 const NOTES_TABLE = 'tree_notes'
+const SCRAPBOOK_TABLE = 'scrapbook_items'
 
 /**
  * Every note anyone has dropped in the jar, oldest first.
@@ -117,5 +118,123 @@ export async function addTreeNote(message) {
     }
   } catch (err) {
     return { ok: false, error: err?.message || 'Could not reach the tree.' }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * The scrapbook.
+ *
+ * This table is the one with full CRUD — unlike the jar and the tree, it
+ * allows UPDATE and DELETE, which is what makes dragging (and tidying up a
+ * misplaced sticker) possible at all.
+ * ------------------------------------------------------------------------- */
+
+function toItem(row) {
+  return {
+    id: row.id,
+    type: row.item_type,
+    content: row.content,
+    x: Number(row.pos_x) || 0,
+    y: Number(row.pos_y) || 0,
+    rotation: Number(row.rotation) || 0,
+    z: Number(row.z_index) || 1,
+  }
+}
+
+/** Everything pinned to the board, bottom of the stack first. */
+export async function fetchScrapbookItems() {
+  try {
+    const { data, error } = await supabase
+      .from(SCRAPBOOK_TABLE)
+      .select('id, item_type, content, pos_x, pos_y, rotation, z_index')
+      .order('z_index', { ascending: true })
+
+    if (error) throw error
+    return (data || []).map(toItem)
+  } catch {
+    return []
+  }
+}
+
+/** Pin something new. Resolves to `{ ok, item, error }`. */
+export async function addScrapbookItem({ type, content, x, y, rotation, z }) {
+  try {
+    const { data, error } = await supabase
+      .from(SCRAPBOOK_TABLE)
+      .insert({
+        item_type: type,
+        content,
+        pos_x: Math.round(x),
+        pos_y: Math.round(y),
+        rotation: Math.round(rotation * 100) / 100,
+        z_index: z,
+      })
+      .select('id, item_type, content, pos_x, pos_y, rotation, z_index')
+      .single()
+
+    if (error) throw error
+    return { ok: true, item: toItem(data) }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not reach the board.' }
+  }
+}
+
+/**
+ * Save where something ended up. Called once on release, never mid-drag —
+ * writing on every pointermove would be a few hundred round-trips per gesture.
+ */
+export async function moveScrapbookItem(id, { x, y, z }) {
+  try {
+    const { error } = await supabase
+      .from(SCRAPBOOK_TABLE)
+      .update({ pos_x: Math.round(x), pos_y: Math.round(y), z_index: z })
+      .eq('id', id)
+    if (error) throw error
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not save that move.' }
+  }
+}
+
+/** Take something off the board for good. */
+export async function removeScrapbookItem(id) {
+  try {
+    const { error } = await supabase.from(SCRAPBOOK_TABLE).delete().eq('id', id)
+    if (error) throw error
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not remove that.' }
+  }
+}
+
+/**
+ * Live updates from the other side of the world.
+ *
+ * Requires the table to be added to the `supabase_realtime` publication in the
+ * dashboard. If it is not, this simply never fires and the board still works —
+ * it just needs a reload to see the other person's changes.
+ */
+export function subscribeToScrapbook(onChange) {
+  const channel = supabase
+    .channel('scrapbook-board')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: SCRAPBOOK_TABLE },
+      (payload) => {
+        if (payload.eventType === 'DELETE') {
+          onChange({ kind: 'delete', id: payload.old?.id })
+        } else {
+          onChange({ kind: payload.eventType.toLowerCase(), item: toItem(payload.new) })
+        }
+      },
+    )
+    .subscribe()
+
+  return () => {
+    try {
+      supabase.removeChannel(channel)
+    } catch {
+      /* already torn down */
+    }
   }
 }

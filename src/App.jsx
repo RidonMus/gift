@@ -7,6 +7,7 @@ import ColoringScreen from './components/ColoringScreen'
 import QuestionScreen from './components/QuestionScreen'
 import QuestionJar from './components/QuestionJar'
 import BonsaiTree from './components/BonsaiTree'
+import ScrapbookCanvas from './components/ScrapbookCanvas'
 import { memories } from './data/memories'
 import { useStickyState } from './hooks/useStickyState'
 
@@ -56,6 +57,7 @@ export default function App() {
             onAskQuestion={() => setPhase('question')}
             onOpenJar={() => setPhase('jar')}
             onOpenTree={() => setPhase('tree')}
+            onOpenScrapbook={() => setPhase('scrapbook')}
           />
         )}
 
@@ -64,6 +66,8 @@ export default function App() {
         {phase === 'jar' && <QuestionJar onBack={backToGallery} />}
 
         {phase === 'tree' && <BonsaiTree onBack={backToGallery} />}
+
+        {phase === 'scrapbook' && <ScrapbookCanvas onBack={backToGallery} />}
 
         {phase === 'puzzle' && memory && (
           <PuzzleScreen memory={memory} onSolved={handleSolved} onBack={backToGallery} />
