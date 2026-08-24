@@ -3,10 +3,12 @@ import DoodleButton from './DoodleButton'
 import { asset, probeImage } from '../utils/assets'
 import {
   addScrapbookItem,
+  compressImage,
   fetchScrapbookItems,
   moveScrapbookItem,
   removeScrapbookItem,
   subscribeToScrapbook,
+  uploadScrapbookPhoto,
 } from '../lib/supabase'
 
 /* ---------------------------------------------------------------------------
@@ -50,6 +52,7 @@ export default function ScrapbookCanvas({ onBack }) {
   const [addingPhoto, setAddingPhoto] = useState(false)
   const [photoUrl, setPhotoUrl] = useState('')
   const [photoError, setPhotoError] = useState(null)
+  const [uploadStage, setUploadStage] = useState(null) // 'shrinking' | 'uploading'
   const [toast, setToast] = useState(null)
 
   const wrapRef = useRef(null)
@@ -296,6 +299,43 @@ export default function ScrapbookCanvas({ onBack }) {
     setAddingPhoto(false)
   }, [photoUrl, saving, placeNew])
 
+  /** Straight from her camera roll: shrink it, upload it, pin it. */
+  const handleUpload = useCallback(
+    async (file) => {
+      if (!file || saving) return
+
+      setSaving(true)
+      setPhotoError(null)
+
+      try {
+        setUploadStage('shrinking')
+        const blob = await compressImage(file)
+
+        setUploadStage('uploading')
+        const result = await uploadScrapbookPhoto(blob)
+
+        if (!result.ok) {
+          setPhotoError(
+            result.needsBucket
+              ? 'Photo uploads need a one-time setup — pasting a link still works.'
+              : result.error,
+          )
+          return
+        }
+
+        await placeNew('photo', result.url)
+        setAddingPhoto(false)
+        setPhotoUrl('')
+      } catch (err) {
+        setPhotoError(err?.message || 'Could not read that picture.')
+      } finally {
+        setSaving(false)
+        setUploadStage(null)
+      }
+    },
+    [saving, placeNew],
+  )
+
   const handleRemove = useCallback(
     async (id) => {
       const snapshot = items
@@ -418,6 +458,41 @@ export default function ScrapbookCanvas({ onBack }) {
             </div>
           ) : addingPhoto ? (
             <div className="animate-pop-in">
+              {/* The upload path first — it is what she will reach for on an
+                  iPad, where "paste a URL" means finding one somewhere else. */}
+              <div className="flex flex-wrap items-center gap-3">
+                <label
+                  className={[
+                    'inline-flex min-h-[48px] cursor-pointer items-center gap-2 rounded-doodle border-[2.5px]',
+                    'border-sky-deep bg-sky-soft px-5 py-2 font-hand text-2xl font-semibold leading-none',
+                    'text-ink shadow-sketch press-soft hover:bg-sky',
+                    saving ? 'pointer-events-none opacity-60' : '',
+                  ].join(' ')}
+                >
+                  📱 Choose a photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={saving}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      // Reset so picking the same file twice still fires.
+                      e.target.value = ''
+                      if (file) handleUpload(file)
+                    }}
+                  />
+                </label>
+
+                {uploadStage && (
+                  <span className="animate-pulse font-hand text-xl text-ink-faint">
+                    {uploadStage === 'shrinking' ? 'shrinking it down…' : 'sending it over…'}
+                  </span>
+                )}
+              </div>
+
+              <p className="mt-3 font-hand text-xl text-ink-faint">— or —</p>
+
               <label htmlFor="scrap-photo" className="font-hand text-2xl text-ink">
                 Paste an image URL:
               </label>

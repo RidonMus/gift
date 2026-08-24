@@ -238,3 +238,86 @@ export function subscribeToScrapbook(onChange) {
     }
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Photo uploads.
+ *
+ * Files go to a public Storage bucket and only the resulting URL is written to
+ * the table, so `content` stays a short string. Stuffing a base64 data URI in
+ * the column instead would work for exactly one photo and then make every
+ * board load drag several megabytes of text across the world.
+ * ------------------------------------------------------------------------- */
+
+export const SCRAPBOOK_BUCKET = 'scrapbook'
+
+/**
+ * Shrink a picture before it leaves the device.
+ *
+ * Phone photos are 3-8MB and the board shows them about 200px wide. Uploading
+ * the original would burn storage and make her wait on hotel wifi for detail
+ * no one can see. Browsers bake EXIF rotation into an <img> these days, so
+ * drawing through a canvas also quietly fixes sideways phone shots.
+ */
+export function compressImage(file, maxDim = 1400, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight))
+      const w = Math.round(img.naturalWidth * scale)
+      const h = Math.round(img.naturalHeight * scale)
+
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(img, 0, 0, w, h)
+
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('Could not read that picture.'))),
+        'image/jpeg',
+        quality,
+      )
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('That file did not look like a picture.'))
+    }
+    img.src = url
+  })
+}
+
+/**
+ * Put a photo in the bucket and hand back its public URL.
+ * Resolves to `{ ok, url, error, needsBucket }`.
+ */
+export async function uploadScrapbookPhoto(blob) {
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+
+  try {
+    const { error } = await supabase.storage
+      .from(SCRAPBOOK_BUCKET)
+      .upload(name, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false })
+
+    if (error) {
+      // Worth calling out by name: it is a one-time setup step, not a bug,
+      // and the generic message gives no clue what to do about it.
+      const missing = /bucket not found/i.test(error.message || '')
+      return {
+        ok: false,
+        needsBucket: missing,
+        error: missing
+          ? 'The photo bucket has not been set up yet.'
+          : error.message || 'Upload failed.',
+      }
+    }
+
+    const { data } = supabase.storage.from(SCRAPBOOK_BUCKET).getPublicUrl(name)
+    return { ok: true, url: data.publicUrl }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Upload failed.' }
+  }
+}
