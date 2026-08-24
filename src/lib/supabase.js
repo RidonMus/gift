@@ -26,6 +26,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 })
 
 const TABLE = 'custom_questions'
+const NOTES_TABLE = 'tree_notes'
 
 /**
  * Every note anyone has dropped in the jar, oldest first.
@@ -70,5 +71,51 @@ export async function addCustomQuestion(text) {
     return { ok: true, question: { id: `cloud-${data.id}`, text: data.content, source: 'cloud' } }
   } catch (err) {
     return { ok: false, error: err?.message || 'Could not reach the jar.' }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * The note tree. Same shape as the jar above, same reasoning: never throw,
+ * always hand back something the UI can render.
+ * ------------------------------------------------------------------------- */
+
+/** Every note left on the tree, newest first. */
+export async function fetchTreeNotes() {
+  try {
+    const { data, error } = await supabase
+      .from(NOTES_TABLE)
+      .select('id, message, created_at')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return (data || [])
+      .map((row) => ({ id: row.id, message: (row.message || '').trim(), createdAt: row.created_at }))
+      .filter((note) => note.message.length > 0)
+  } catch {
+    return []
+  }
+}
+
+/** Hang a new note on the tree. Resolves to `{ ok, note, error }`. */
+export async function addTreeNote(message) {
+  const text = message.trim()
+  if (!text) return { ok: false, error: 'Write something first.' }
+
+  try {
+    const { data, error } = await supabase
+      .from(NOTES_TABLE)
+      .insert({ message: text })
+      .select('id, message, created_at')
+      .single()
+
+    if (error) throw error
+
+    return {
+      ok: true,
+      note: { id: data.id, message: data.message, createdAt: data.created_at },
+    }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not reach the tree.' }
   }
 }
