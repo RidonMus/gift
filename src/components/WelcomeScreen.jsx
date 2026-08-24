@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react'
 import MemoryCard from './MemoryCard'
+import MusicPlayer from './MusicPlayer'
+import TimeTogether from './TimeTogether'
 import { memories, greetings } from '../data/memories'
 
 /**
@@ -13,6 +15,11 @@ export default function WelcomeScreen({ completed, onPick, onAskQuestion, onOpen
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 pb-16 pt-10 sm:px-8 sm:pt-14">
+      {/* ---- our song, tucked up in the corner ---- */}
+      <div className="mb-4 flex justify-end">
+        <MusicPlayer />
+      </div>
+
       {/* ---- the note ---- */}
       <div className="relative mx-auto max-w-2xl animate-fade-up">
         <div className="paper-grain relative rounded-card border-[2.5px] border-ink/70 bg-paper px-6 py-8 shadow-sketch-lg sm:px-10 sm:py-10">
@@ -99,7 +106,10 @@ export default function WelcomeScreen({ completed, onPick, onAskQuestion, onOpen
         )}
       </div>
 
-      <p className="mt-16 text-center font-hand text-2xl text-ink-faint">
+      {/* ---- the two clocks ---- */}
+      <TimeTogether />
+
+      <p className="mt-10 text-center font-hand text-2xl text-ink-faint">
         made by Nodir, from far away, for you 💌
       </p>
     </div>
