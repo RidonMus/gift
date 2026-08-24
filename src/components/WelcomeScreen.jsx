@@ -87,7 +87,7 @@ export default function WelcomeScreen({
           </span>
           <span className="ml-2 inline-block animate-float-soft text-2xl">🫙</span>
           <span className="mt-0.5 block font-hand text-xl text-ink-faint">
-            for when we’re on the phone
+            for when we want to learn more about each other
           </span>
         </button>
 

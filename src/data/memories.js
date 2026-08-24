@@ -87,7 +87,7 @@ export const defaultHint = 'No timer, no score. Just you, sixteen little pieces,
 export const greetings = [
   'I built you a small, quiet place.',
   'For when the day has been a lot.',
-  'And the real me is a little annoying',
+  'And when the real me is a little annoying',
   'A little corner that is only yours.',
   'Made entirely of missing you.',
 ]
