@@ -87,6 +87,51 @@ export default {
           '70%': { opacity: '1', transform: 'translate(-50%, -120px) scale(0.85) rotate(12deg)' },
           '100%': { opacity: '0', transform: 'translate(-50%, -170px) scale(1.1) rotate(-6deg)' },
         },
+        /* Each leaf swings from the string it hangs by, not its middle. */
+        'leaf-sway': {
+          '0%, 100%': { transform: 'rotate(-3.5deg)' },
+          '50%': { transform: 'rotate(3.5deg)' },
+        },
+        /* The whole tree rocking when she shakes it. */
+        'tree-rock': {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '15%': { transform: 'rotate(-2.2deg)' },
+          '35%': { transform: 'rotate(1.8deg)' },
+          '55%': { transform: 'rotate(-1.2deg)' },
+          '75%': { transform: 'rotate(0.8deg)' },
+        },
+        /* A petal shaken loose, drifting sideways as it falls. */
+        'petal-fall': {
+          '0%': { opacity: '0', transform: 'translate(0, 0) rotate(0deg)' },
+          '12%': { opacity: '1' },
+          '100%': { opacity: '0', transform: 'translate(var(--drift, 30px), 240px) rotate(320deg)' },
+        },
+        /* Fireflies, once the sun is down over Tashkent. */
+        'firefly-drift': {
+          '0%, 100%': { opacity: '0.15', transform: 'translate(0, 0)' },
+          '25%': { opacity: '0.9', transform: 'translate(14px, -12px)' },
+          '50%': { opacity: '0.35', transform: 'translate(-8px, -22px)' },
+          '75%': { opacity: '0.85', transform: 'translate(-16px, -8px)' },
+        },
+        /* Snow, in a Tashkent winter. */
+        'snow-fall': {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '15%': { opacity: '0.9' },
+          '100%': { opacity: '0', transform: 'translateY(300px)' },
+        },
+        /* The note that flutters down when the tree is shaken. */
+        'flutter-down': {
+          '0%': { opacity: '0', transform: 'translate(-50%, -140px) rotate(-18deg) scale(0.5)' },
+          '30%': { opacity: '1', transform: 'translate(-50%, -70px) rotate(14deg) scale(0.7)' },
+          '65%': { transform: 'translate(-50%, -20px) rotate(-8deg) scale(0.9)' },
+          '100%': { opacity: '1', transform: 'translate(-50%, 0) rotate(0deg) scale(1)' },
+        },
+        /* A new stage of growth arriving. */
+        'grow-in': {
+          '0%': { opacity: '0', transform: 'scale(0.7)' },
+          '60%': { opacity: '1', transform: 'scale(1.08)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
         /* The note unfolding: a squashed slip springing open into a square. */
         'note-unfold': {
           '0%': { opacity: '0', transform: 'scale(0.2, 0.05) rotate(-12deg)' },
@@ -103,6 +148,13 @@ export default {
         'tile-pop': 'tile-pop 0.32s ease-out',
         'heart-beat': 'heart-beat 1.8s ease-in-out infinite',
         'jar-shake': 'jar-shake 0.55s ease-in-out',
+        'leaf-sway': 'leaf-sway 4s ease-in-out infinite',
+        'tree-rock': 'tree-rock 0.9s ease-in-out',
+        'petal-fall': 'petal-fall 2.6s ease-in forwards',
+        'firefly-drift': 'firefly-drift 6s ease-in-out infinite',
+        'snow-fall': 'snow-fall 9s linear infinite',
+        'flutter-down': 'flutter-down 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) both',
+        'grow-in': 'grow-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
         'paper-fly': 'paper-fly 0.85s ease-out forwards',
         'note-unfold': 'note-unfold 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
       },

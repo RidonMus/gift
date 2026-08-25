@@ -80,30 +80,81 @@ export async function addCustomQuestion(text) {
  * always hand back something the UI can render.
  * ------------------------------------------------------------------------- */
 
-/** Every note left on the tree, newest first. */
+/**
+ * Every note left on the tree, newest first.
+ *
+ * `author` is optional. The column may not exist yet, and PostgREST answers a
+ * request for an unknown column with a 400 rather than ignoring it — so try
+ * the richer shape first and quietly fall back to the plain one. That way the
+ * tree works today and starts colour-coding the moment the column is added,
+ * with no second deploy.
+ */
+/* Remembered for the session so we only pay for the probe once, instead of
+ * logging a 400 on every single fetch until the column is added. */
+let hasAuthorColumn = true
+
 export async function fetchTreeNotes() {
+  const shape = (row) => ({
+    id: row.id,
+    message: (row.message || '').trim(),
+    createdAt: row.created_at,
+    author: row.author || null,
+  })
+
   try {
-    const { data, error } = await supabase
+    if (hasAuthorColumn) {
+      const withAuthor = await supabase
+        .from(NOTES_TABLE)
+        .select('id, message, created_at, author')
+        .order('created_at', { ascending: false })
+
+      if (!withAuthor.error) {
+        return (withAuthor.data || []).map(shape).filter((n) => n.message.length > 0)
+      }
+      hasAuthorColumn = false
+    }
+
+    const plain = await supabase
       .from(NOTES_TABLE)
       .select('id, message, created_at')
       .order('created_at', { ascending: false })
 
-    if (error) throw error
-
-    return (data || [])
-      .map((row) => ({ id: row.id, message: (row.message || '').trim(), createdAt: row.created_at }))
-      .filter((note) => note.message.length > 0)
+    if (plain.error) throw plain.error
+    return (plain.data || []).map(shape).filter((n) => n.message.length > 0)
   } catch {
     return []
   }
 }
 
-/** Hang a new note on the tree. Resolves to `{ ok, note, error }`. */
-export async function addTreeNote(message) {
+/**
+ * Hang a new note on the tree. Resolves to `{ ok, note, error }`.
+ * Same optional-column dance as the fetch above.
+ */
+export async function addTreeNote(message, author = null) {
   const text = message.trim()
   if (!text) return { ok: false, error: 'Write something first.' }
 
+  const done = (row) => ({
+    ok: true,
+    note: {
+      id: row.id,
+      message: row.message,
+      createdAt: row.created_at,
+      author: row.author || author || null,
+    },
+  })
+
   try {
+    if (author && hasAuthorColumn) {
+      const attempt = await supabase
+        .from(NOTES_TABLE)
+        .insert({ message: text, author })
+        .select('id, message, created_at, author')
+        .single()
+      if (!attempt.error) return done(attempt.data)
+      hasAuthorColumn = false
+    }
+
     const { data, error } = await supabase
       .from(NOTES_TABLE)
       .insert({ message: text })
@@ -111,11 +162,7 @@ export async function addTreeNote(message) {
       .single()
 
     if (error) throw error
-
-    return {
-      ok: true,
-      note: { id: data.id, message: data.message, createdAt: data.created_at },
-    }
+    return done(data)
   } catch (err) {
     return { ok: false, error: err?.message || 'Could not reach the tree.' }
   }
