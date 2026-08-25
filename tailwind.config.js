@@ -65,6 +65,15 @@ export default {
           '45%': { transform: 'scale(0.9)' },
           '100%': { transform: 'scale(1)' },
         },
+        /* Jigsaw pieces cannot move to acknowledge a tap — they are clipped to
+         * a silhouette that an outline layer traces exactly, and any transform
+         * would slide the picture out from under its own cut line. So the
+         * feedback is a flash of light instead of a nudge. */
+        'piece-pop': {
+          '0%': { filter: 'brightness(1)' },
+          '40%': { filter: 'brightness(1.28) saturate(1.15)' },
+          '100%': { filter: 'brightness(1)' },
+        },
         'heart-beat': {
           '0%, 100%': { transform: 'scale(1)' },
           '25%': { transform: 'scale(1.18)' },
@@ -146,6 +155,7 @@ export default {
         'fade-up': 'fade-up 0.6s ease-out both',
         wiggle: 'wiggle 1.6s ease-in-out infinite',
         'tile-pop': 'tile-pop 0.32s ease-out',
+        'piece-pop': 'piece-pop 0.42s ease-out',
         'heart-beat': 'heart-beat 1.8s ease-in-out infinite',
         'jar-shake': 'jar-shake 0.55s ease-in-out',
         'leaf-sway': 'leaf-sway 4s ease-in-out infinite',
