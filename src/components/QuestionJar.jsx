@@ -153,8 +153,8 @@ export default function QuestionJar({ onBack }) {
           Our <span className="marker-underline">question jar</span> 🫙
         </h1>
         <p className="mx-auto mt-3 max-w-md font-body text-base leading-relaxed text-ink-soft">
-          One jar, two countries. Tap it for something to talk about — and leave a note in here
-          whenever you think of one, so I find it on my side too.
+          Our question jar. Tap it for something to talk about and leave a note in here
+          whenever you think of one.
         </p>
       </div>
 
