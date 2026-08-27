@@ -43,15 +43,15 @@ const ROOT = { x: 200, y: 386 }
 const STAGES = [
   { at: 0, scale: 0.52, name: 'a bare little thing', blurb: 'leave the first note ✨' },
   { at: 1, scale: 0.62, name: 'a sprout', blurb: 'it has started' },
-  { at: 5, scale: 0.72, name: 'a sapling', blurb: 'it is taking' },
-  { at: 12, scale: 0.82, name: 'a young tree', blurb: 'fireflies at 20' },
-  { at: 20, scale: 0.9, name: 'properly growing', blurb: 'a bird might nest at 35' },
-  { at: 35, scale: 0.96, name: 'full and leafy', blurb: 'blossoms at 60' },
-  { at: 60, scale: 1, name: 'in full bloom', blurb: 'and a cat at 100 🐈' },
-  { at: 100, scale: 1, name: 'an old friend', blurb: 'look what we made' },
+  { at: 3, scale: 0.72, name: 'a sapling', blurb: 'it is taking' },
+  { at: 6, scale: 0.82, name: 'a young tree', blurb: 'fireflies at 9' },
+  { at: 9, scale: 0.9, name: 'properly growing', blurb: 'a bird might nest at 12' },
+  { at: 12, scale: 0.96, name: 'full and leafy', blurb: 'blossoms at 15' },
+  { at: 15, scale: 1, name: 'in full bloom', blurb: 'and a cat at 18 🐈' },
+  { at: 18, scale: 1, name: 'an old friend', blurb: 'look what we made' },
 ]
 
-const UNLOCKS = { fireflies: 20, bird: 35, blossoms: 60, cat: 100 }
+const UNLOCKS = { fireflies: 9, bird: 12, blossoms: 15, cat: 18 }
 
 /* Tag colours. Once notes carry an author these split warm/cool so you can
  * tell at a glance whose handwriting is whose. */
@@ -971,7 +971,7 @@ function NoteModal({ note, onClose, shaken = false, firstOfDay = false, scale = 
         onClick={(e) => e.stopPropagation()}
         style={{ backgroundColor: spot.color }}
         className={[
-          'relative w-full max-w-md rounded-card border-[3px] border-ink/75 px-6 py-10 text-center shadow-lifted sm:px-10',
+          'relative w-full max-w-sm rounded-card border-[3px] border-ink/75 px-6 py-8 text-center shadow-lifted sm:px-8',
           shaken ? 'animate-flutter-down' : 'animate-note-unfold',
         ].join(' ')}
       >
@@ -985,7 +985,7 @@ function NoteModal({ note, onClose, shaken = false, firstOfDay = false, scale = 
           <p className="mb-2 font-hand text-xl text-ink/60">the first note of its day 🌸</p>
         )}
 
-        <p className="whitespace-pre-wrap font-hand text-3xl leading-snug text-ink sm:text-4xl">
+        <p className="whitespace-pre-wrap font-hand text-2xl leading-snug text-ink sm:text-3xl">
           {note.message}
         </p>
 
