@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import DoodleButton from './DoodleButton'
 import { preloadedQuestions } from '../data/dateNightQuestions'
-import { addCustomQuestion, fetchCustomQuestions } from '../lib/supabase'
+import { addCustomQuestion, deleteCustomQuestion, fetchCustomQuestions } from '../lib/supabase'
 
 /* How long the jar rattles before the note appears. Matches the jar-shake and
  * paper-fly keyframes in tailwind.config.js. */
@@ -100,6 +100,24 @@ export default function QuestionJar({ onBack }) {
     setPhase('idle')
     setCurrent(null)
   }, [])
+
+  const handleDiscussed = useCallback(
+    async (question) => {
+      if (!question) return
+
+      const result = await deleteCustomQuestion(question.id)
+      if (!result.ok) {
+        flashToast(result.error || 'Could not update the jar.')
+        return
+      }
+
+      setCloudQuestions((current) => current.filter((item) => item.id !== question.id))
+      setBag((current) => current.filter((item) => item.id !== question.id))
+      closeNote()
+      flashToast('Marked as discussed ✨')
+    },
+    [closeNote, flashToast],
+  )
 
   const openComposer = useCallback(() => {
     setComposing(true)
@@ -248,7 +266,12 @@ export default function QuestionJar({ onBack }) {
       )}
 
       {phase === 'note' && current && (
-        <StickyNote question={current} onAnother={drawQuestion} onClose={closeNote} />
+        <StickyNote
+          question={current}
+          onAnother={drawQuestion}
+          onClose={closeNote}
+          onDiscuss={handleDiscussed}
+        />
       )}
     </div>
   )
@@ -319,7 +342,7 @@ function MasonJar({ shaking, count }) {
 }
 
 /** The drawn question, unfolded in the middle of the screen. */
-function StickyNote({ question, onAnother, onClose }) {
+function StickyNote({ question, onAnother, onClose, onDiscuss }) {
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -352,6 +375,9 @@ function StickyNote({ question, onAnother, onClose }) {
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <DoodleButton variant="sage" onClick={onAnother}>
             another one 🫙
+          </DoodleButton>
+          <DoodleButton variant="blush" onClick={() => onDiscuss?.(question)}>
+            Mark as discussed
           </DoodleButton>
           <DoodleButton size="sm" variant="ghost" alt onClick={onClose}>
             close

@@ -75,6 +75,24 @@ export async function addCustomQuestion(text) {
   }
 }
 
+/** Remove a cloud question from the jar entirely. */
+export async function deleteCustomQuestion(questionId) {
+  const rawId = String(questionId ?? '').replace(/^cloud-/, '')
+  const id = Number(rawId)
+
+  if (!Number.isFinite(id)) {
+    return { ok: false, error: 'Could not identify that question.' }
+  }
+
+  try {
+    const { error } = await supabase.from(TABLE).delete().eq('id', id)
+    if (error) throw error
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not remove that question.' }
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * The note tree. Same shape as the jar above, same reasoning: never throw,
  * always hand back something the UI can render.

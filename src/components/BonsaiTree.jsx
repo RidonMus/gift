@@ -177,6 +177,19 @@ const dayKeyOf = (iso) =>
     day: '2-digit',
   }).format(new Date(iso))
 
+function isTodayInLocal(iso) {
+  if (!iso) return false
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return false
+
+  const today = new Date()
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  )
+}
+
 function formatWhen(iso) {
   if (!iso) return ''
   const date = new Date(iso)
@@ -333,6 +346,10 @@ export default function BonsaiTree({ onBack }) {
   const visible = notes.slice(0, MAX_LEAVES)
   const season = SEASONS[sky.season]
   const nextStage = STAGES[stageIndex + 1]
+  const todaysNote = useMemo(
+    () => [...notes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).find((note) => isTodayInLocal(note.createdAt)) || null,
+    [notes],
+  )
 
   return (
     <div className="mx-auto flex min-h-[85vh] w-full max-w-3xl flex-col items-center px-5 py-8">
@@ -363,6 +380,16 @@ export default function BonsaiTree({ onBack }) {
         {sky.season === 'winter' && <Snow />}
         {notes.length >= UNLOCKS.fireflies && sky.phase === 'night' && <Fireflies />}
 
+        {todaysNote && !open && !fluttering && (
+          <button
+            type="button"
+            onClick={() => setOpen(todaysNote)}
+            className="absolute right-3 top-3 z-30 rounded-pebble border-2 border-butter-deep bg-butter-soft/90 px-3 py-1.5 font-hand text-xl text-ink shadow-sketch transition-transform hover:scale-[1.02]"
+          >
+            Today’s note ✨
+          </button>
+        )}
+
         <div className={shaking ? 'h-full w-full origin-bottom animate-tree-rock' : 'h-full w-full'}>
           <TreeArt
             scale={stage.scale}
@@ -378,6 +405,7 @@ export default function BonsaiTree({ onBack }) {
               firstOfDay: firstOfDayIds.has(note.id),
             })
             const isNew = justAdded.current === note.id
+            const isTodayNote = isTodayInLocal(note.createdAt)
             return (
               <button
                 key={note.id}
@@ -395,6 +423,7 @@ export default function BonsaiTree({ onBack }) {
                   'absolute z-10 origin-top -translate-x-1/2 focus:outline-none',
                   'focus-visible:ring-4 focus-visible:ring-butter',
                   isNew ? 'animate-grow-in' : 'animate-leaf-sway',
+                  isTodayNote ? 'animate-pulse ring-2 ring-butter/80 drop-shadow-[0_0_10px_rgba(246,227,168,0.8)]' : '',
                 ].join(' ')}
               >
                 <Leaf spot={spot} />

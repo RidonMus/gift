@@ -86,6 +86,16 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
               ? 'perfect, every piece home'
               : `tap one piece, then tap where it should go · ${inPlace}/${TILE_COUNT} in place`}
           </p>
+
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={onSolved}
+              className="font-hand text-xl text-ink-faint underline decoration-wavy underline-offset-4 transition-colors hover:text-ink"
+            >
+              Skip to Coloring 🎨
+            </button>
+          </div>
         </div>
 
         {/* ---- the sidebar ---- */}
