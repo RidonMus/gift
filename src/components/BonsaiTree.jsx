@@ -183,11 +183,13 @@ function isTodayInLocal(iso) {
   if (Number.isNaN(date.getTime())) return false
 
   const today = new Date()
-  return (
+  const isLocalToday =
     date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate()
-  )
+
+  const isTashkentToday = dayKeyOf(iso) === dayKeyOf(today.toISOString())
+  return isLocalToday || isTashkentToday
 }
 
 function formatWhen(iso) {
@@ -346,8 +348,11 @@ export default function BonsaiTree({ onBack }) {
   const visible = notes.slice(0, MAX_LEAVES)
   const season = SEASONS[sky.season]
   const nextStage = STAGES[stageIndex + 1]
-  const todaysNote = useMemo(
-    () => [...notes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).find((note) => isTodayInLocal(note.createdAt)) || null,
+  const todaysNotes = useMemo(
+    () =>
+      notes
+        .filter((note) => isTodayInLocal(note.createdAt))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [notes],
   )
 
@@ -380,15 +385,29 @@ export default function BonsaiTree({ onBack }) {
         {sky.season === 'winter' && <Snow />}
         {notes.length >= UNLOCKS.fireflies && sky.phase === 'night' && <Fireflies />}
 
-        {todaysNote && !open && !fluttering && (
-          <button
-            type="button"
-            onClick={() => setOpen(todaysNote)}
-            className="absolute right-3 top-3 z-30 rounded-pebble border-2 border-butter-deep bg-butter-soft/90 px-3 py-1.5 font-hand text-xl text-ink shadow-sketch transition-transform hover:scale-[1.02]"
-          >
-            Today’s note ✨
-          </button>
-        )}
+        {/* top header: season badge & today's note(s) */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 p-2.5">
+          <div className="rounded-pebble border border-ink/20 bg-paper/85 px-2 py-0.5 font-hand text-xs leading-tight text-ink-soft shadow-xs backdrop-blur-sm sm:text-sm">
+            {season.label}
+          </div>
+
+          {todaysNotes.length > 0 && !open && !fluttering && (
+            <div className="pointer-events-auto flex max-w-[62%] flex-wrap items-center justify-end gap-1.5">
+              {todaysNotes.map((note, idx) => (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={() => setOpen(note)}
+                  className="rounded-pebble border-[1.5px] border-butter-deep bg-butter-soft/95 px-2.5 py-1 font-hand text-xs text-ink shadow-sketch transition-all hover:scale-105 active:scale-95 sm:text-sm"
+                >
+                  {todaysNotes.length === 1
+                    ? 'Today’s note ✨'
+                    : `Today’s note ${note.author ? `(${note.author})` : `#${idx + 1}`} ✨`}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className={shaking ? 'h-full w-full origin-bottom animate-tree-rock' : 'h-full w-full'}>
           <TreeArt
@@ -441,11 +460,6 @@ export default function BonsaiTree({ onBack }) {
         )}
 
         {shaking && <Petals season={season} />}
-
-        {/* season + growth badge */}
-        <div className="pointer-events-none absolute left-3 top-3 rounded-pebble border-2 border-ink/25 bg-paper/80 px-2.5 py-1 font-hand text-lg leading-tight text-ink-soft backdrop-blur-sm">
-          {season.label}
-        </div>
       </div>
 
       {/* ---- growth line ---- */}

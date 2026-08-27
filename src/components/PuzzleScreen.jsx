@@ -86,16 +86,6 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
               ? 'perfect, every piece home'
               : `tap one piece, then tap where it should go · ${inPlace}/${TILE_COUNT} in place`}
           </p>
-
-          <div className="mt-4 flex justify-center">
-            <button
-              type="button"
-              onClick={onSolved}
-              className="font-hand text-xl text-ink-faint underline decoration-wavy underline-offset-4 transition-colors hover:text-ink"
-            >
-              Skip to Coloring 🎨
-            </button>
-          </div>
         </div>
 
         {/* ---- the sidebar ---- */}
@@ -131,6 +121,17 @@ export default function PuzzleScreen({ memory, onSolved, onBack }) {
                 {peeking ? '🙈 tap to hide' : '👀 press to peek'}
               </DoodleButton>
               <span className="ml-auto font-hand text-2xl text-ink-faint">{moves} moves</span>
+            </div>
+
+            <div className="mt-4 border-t-2 border-dashed border-ink/15 pt-4">
+              <DoodleButton
+                size="sm"
+                variant="blush"
+                className="w-full justify-center text-center"
+                onClick={onSolved}
+              >
+                Skip to Coloring 🎨
+              </DoodleButton>
             </div>
           </div>
         </aside>

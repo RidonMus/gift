@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import DoodleButton from './DoodleButton'
-import { preloadedQuestions } from '../data/dateNightQuestions'
 import { addCustomQuestion, deleteCustomQuestion, fetchCustomQuestions } from '../lib/supabase'
 
 /* How long the jar rattles before the note appears. Matches the jar-shake and
@@ -29,6 +28,7 @@ function shuffle(list) {
  */
 export default function QuestionJar({ onBack }) {
   const [cloudQuestions, setCloudQuestions] = useState([])
+  const [loading, setLoading] = useState(true)
   const [phase, setPhase] = useState('idle') // idle | shaking | note
   const [current, setCurrent] = useState(null)
   const [bag, setBag] = useState([])
@@ -43,14 +43,18 @@ export default function QuestionJar({ onBack }) {
   const toastTimer = useRef(null)
   const inputRef = useRef(null)
 
-  // The preloaded set is the floor; cloud notes stack on top once they land.
-  const allQuestions = [...preloadedQuestions, ...cloudQuestions]
+  // Only questions fetched from the database are used in the jar.
+  const allQuestions = cloudQuestions
 
   useEffect(() => {
     let cancelled = false
-    fetchCustomQuestions().then((rows) => {
-      if (!cancelled) setCloudQuestions(rows)
-    })
+    fetchCustomQuestions()
+      .then((rows) => {
+        if (!cancelled) setCloudQuestions(rows)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
       cancelled = true
     }
@@ -72,6 +76,14 @@ export default function QuestionJar({ onBack }) {
 
   const drawQuestion = useCallback(() => {
     if (phase === 'shaking') return
+    if (loading) {
+      flashToast('Checking the jar… 🫙')
+      return
+    }
+    if (allQuestions.length === 0) {
+      flashToast('The jar is empty! Drop a note in first ✨')
+      return
+    }
 
     setPhase('shaking')
     if (shakeTimer.current) clearTimeout(shakeTimer.current)
@@ -94,7 +106,7 @@ export default function QuestionJar({ onBack }) {
       })
       setPhase('note')
     }, SHAKE_MS)
-  }, [phase, allQuestions, current])
+  }, [phase, loading, allQuestions, current, flashToast])
 
   const closeNote = useCallback(() => {
     setPhase('idle')
@@ -196,11 +208,20 @@ export default function QuestionJar({ onBack }) {
         </button>
 
         <p className="mt-3 font-hand text-2xl text-ink-faint">
-          {phase === 'shaking' ? 'shaking…' : 'tap the jar'}
+          {phase === 'shaking'
+            ? 'shaking…'
+            : loading
+            ? 'checking the jar…'
+            : allQuestions.length === 0
+            ? 'the jar is empty'
+            : 'tap the jar'}
         </p>
         <p className="font-body text-xs text-ink-faint/80">
-          {allQuestions.length} questions inside
-          {cloudQuestions.length > 0 && ` · ${cloudQuestions.length} from us`}
+          {loading
+            ? 'Loading…'
+            : allQuestions.length === 0
+            ? 'No questions yet'
+            : `${allQuestions.length} ${allQuestions.length === 1 ? 'question' : 'questions'} inside`}
         </p>
       </div>
 
@@ -279,7 +300,7 @@ export default function QuestionJar({ onBack }) {
 
 /** A hand-drawn glass mason jar, with folded slips settled in the bottom. */
 function MasonJar({ shaking, count }) {
-  const slips = Math.min(7, Math.max(3, Math.round(count / 2)))
+  const slips = count === 0 ? 0 : Math.min(7, Math.max(1, Math.round(count / 2)))
 
   return (
     <svg
