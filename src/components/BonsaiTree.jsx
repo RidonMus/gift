@@ -348,12 +348,23 @@ export default function BonsaiTree({ onBack }) {
   const visible = notes.slice(0, MAX_LEAVES)
   const season = SEASONS[sky.season]
   const nextStage = STAGES[stageIndex + 1]
-  const todaysNotes = useMemo(
-    () =>
-      notes
-        .filter((note) => isTodayInLocal(note.createdAt))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    [notes],
+
+  /* The pinned badge up top: today's note(s) if there are any, otherwise the
+   * single most recent note regardless of when it was left. That fallback is
+   * the whole point — without it the badge simply vanishes once "today" has
+   * no note in it, and the last thing either of us wrote could sit unnoticed
+   * among dozens of leaves for as long as neither of us writes again. */
+  const pinnedNotes = useMemo(() => {
+    const today = notes
+      .filter((note) => isTodayInLocal(note.createdAt))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    if (today.length > 0) return { notes: today, isToday: true }
+    return { notes: notes.length > 0 ? [notes[0]] : [], isToday: false }
+  }, [notes])
+
+  const highlightedIds = useMemo(
+    () => new Set(pinnedNotes.notes.map((n) => n.id)),
+    [pinnedNotes],
   )
 
   return (
@@ -391,18 +402,20 @@ export default function BonsaiTree({ onBack }) {
             {season.label}
           </div>
 
-          {todaysNotes.length > 0 && !open && !fluttering && (
+          {pinnedNotes.notes.length > 0 && !open && !fluttering && (
             <div className="pointer-events-auto flex max-w-[62%] flex-wrap items-center justify-end gap-1.5">
-              {todaysNotes.map((note, idx) => (
+              {pinnedNotes.notes.map((note, idx) => (
                 <button
                   key={note.id}
                   type="button"
                   onClick={() => setOpen(note)}
                   className="rounded-pebble border-[1.5px] border-butter-deep bg-butter-soft/95 px-2.5 py-1 font-hand text-xs text-ink shadow-sketch transition-all hover:scale-105 active:scale-95 sm:text-sm"
                 >
-                  {todaysNotes.length === 1
-                    ? 'Today’s note ✨'
-                    : `Today’s note ${note.author ? `(${note.author})` : `#${idx + 1}`} ✨`}
+                  {pinnedNotes.isToday
+                    ? pinnedNotes.notes.length === 1
+                      ? 'Today’s note ✨'
+                      : `Today’s note ${note.author ? `(${note.author})` : `#${idx + 1}`} ✨`
+                    : 'Latest note ✨'}
                 </button>
               ))}
             </div>
@@ -424,7 +437,7 @@ export default function BonsaiTree({ onBack }) {
               firstOfDay: firstOfDayIds.has(note.id),
             })
             const isNew = justAdded.current === note.id
-            const isTodayNote = isTodayInLocal(note.createdAt)
+            const isPinned = highlightedIds.has(note.id)
             return (
               <button
                 key={note.id}
@@ -442,7 +455,7 @@ export default function BonsaiTree({ onBack }) {
                   'absolute z-10 origin-top -translate-x-1/2 focus:outline-none',
                   'focus-visible:ring-4 focus-visible:ring-butter',
                   isNew ? 'animate-grow-in' : 'animate-leaf-sway',
-                  isTodayNote ? 'animate-pulse ring-2 ring-butter/80 drop-shadow-[0_0_10px_rgba(246,227,168,0.8)]' : '',
+                  isPinned ? 'animate-pulse ring-2 ring-butter/80 drop-shadow-[0_0_10px_rgba(246,227,168,0.8)]' : '',
                 ].join(' ')}
               >
                 <Leaf spot={spot} />

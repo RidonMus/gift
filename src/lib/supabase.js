@@ -28,6 +28,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 const TABLE = 'custom_questions'
 const NOTES_TABLE = 'tree_notes'
 const SCRAPBOOK_TABLE = 'scrapbook_items'
+const SCRAPBOOK_BOARDS_TABLE = 'scrapbook_boards'
 
 /**
  * Every note anyone has dropped in the jar, oldest first.
@@ -206,14 +207,22 @@ function toItem(row) {
   }
 }
 
-/** Everything pinned to the board, bottom of the stack first. */
-export async function fetchScrapbookItems() {
+/**
+ * Everything pinned to one board, bottom of the stack first.
+ * Pass no `boardId` (or a falsy one) to get every item regardless of board —
+ * that is the pre-multi-board behaviour, kept as the default so a device that
+ * has not yet learned about boards still sees everything that is there.
+ */
+export async function fetchScrapbookItems(boardId) {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from(SCRAPBOOK_TABLE)
       .select('id, item_type, content, pos_x, pos_y, rotation, z_index')
       .order('z_index', { ascending: true })
 
+    if (boardId) query = query.eq('board_id', boardId)
+
+    const { data, error } = await query
     if (error) throw error
     return (data || []).map(toItem)
   } catch {
@@ -222,18 +231,23 @@ export async function fetchScrapbookItems() {
 }
 
 /** Pin something new. Resolves to `{ ok, item, error }`. */
-export async function addScrapbookItem({ type, content, x, y, rotation, z }) {
+export async function addScrapbookItem({ type, content, x, y, rotation, z, boardId }) {
   try {
+    const payload = {
+      item_type: type,
+      content,
+      pos_x: Math.round(x),
+      pos_y: Math.round(y),
+      rotation: Math.round(rotation * 100) / 100,
+      z_index: z,
+    }
+    // Omitted when boards are not set up yet, so the insert still matches the
+    // table's actual columns rather than failing on one that doesn't exist.
+    if (boardId) payload.board_id = boardId
+
     const { data, error } = await supabase
       .from(SCRAPBOOK_TABLE)
-      .insert({
-        item_type: type,
-        content,
-        pos_x: Math.round(x),
-        pos_y: Math.round(y),
-        rotation: Math.round(rotation * 100) / 100,
-        z_index: z,
-      })
+      .insert(payload)
       .select('id, item_type, content, pos_x, pos_y, rotation, z_index')
       .single()
 
@@ -273,18 +287,25 @@ export async function removeScrapbookItem(id) {
 }
 
 /**
- * Live updates from the other side of the world.
+ * Live updates from the other side of the world, scoped to one board when
+ * boards are in play so switching boards doesn't keep listening to the old
+ * one. Each board gets its own channel name for the same reason.
  *
  * Requires the table to be added to the `supabase_realtime` publication in the
  * dashboard. If it is not, this simply never fires and the board still works —
  * it just needs a reload to see the other person's changes.
  */
-export function subscribeToScrapbook(onChange) {
+export function subscribeToScrapbook(boardId, onChange) {
   const channel = supabase
-    .channel('scrapbook-board')
+    .channel(`scrapbook-board-${boardId || 'legacy'}`)
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: SCRAPBOOK_TABLE },
+      {
+        event: '*',
+        schema: 'public',
+        table: SCRAPBOOK_TABLE,
+        ...(boardId ? { filter: `board_id=eq.${boardId}` } : {}),
+      },
       (payload) => {
         if (payload.eventType === 'DELETE') {
           onChange({ kind: 'delete', id: payload.old?.id })
@@ -301,6 +322,91 @@ export function subscribeToScrapbook(onChange) {
     } catch {
       /* already torn down */
     }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Scrapbook boards.
+ *
+ * One scrapbook can become several: a save-and-start-fresh so a trip or a
+ * season gets its own page instead of everything piling onto one endless
+ * board. This needs its own table (`scrapbook_boards`) plus a `board_id`
+ * column on `scrapbook_items`, neither of which exist until the one-time SQL
+ * migration is run — until then `fetchScrapbookBoards` reports itself
+ * unsupported and the app quietly keeps behaving exactly as it does today,
+ * one continuous board with no switcher shown.
+ * ------------------------------------------------------------------------- */
+
+function toBoard(row) {
+  return { id: row.id, name: row.name || 'Untitled board', createdAt: row.created_at, updatedAt: row.updated_at }
+}
+
+/**
+ * Every board that exists, oldest first — so the board that the migration
+ * created to hold everything already on the page is always the first one.
+ * `unsupported: true` means the migration has not been run yet.
+ */
+export async function fetchScrapbookBoards() {
+  try {
+    const { data, error } = await supabase
+      .from(SCRAPBOOK_BOARDS_TABLE)
+      .select('id, name, created_at, updated_at')
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+    return { ok: true, unsupported: false, boards: (data || []).map(toBoard) }
+  } catch {
+    return { ok: false, unsupported: true, boards: [] }
+  }
+}
+
+/** Start a new, empty board. Resolves to `{ ok, board, error }`. */
+export async function createScrapbookBoard(name) {
+  const trimmed = (name || '').trim() || 'Untitled board'
+  try {
+    const { data, error } = await supabase
+      .from(SCRAPBOOK_BOARDS_TABLE)
+      .insert({ name: trimmed })
+      .select('id, name, created_at, updated_at')
+      .single()
+
+    if (error) throw error
+    return { ok: true, board: toBoard(data) }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not start that board.' }
+  }
+}
+
+/** Rename a board. Resolves to `{ ok, error }`. */
+export async function renameScrapbookBoard(id, name) {
+  const trimmed = (name || '').trim()
+  if (!trimmed) return { ok: false, error: 'Give it a name first.' }
+
+  try {
+    const { error } = await supabase
+      .from(SCRAPBOOK_BOARDS_TABLE)
+      .update({ name: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not rename that board.' }
+  }
+}
+
+/**
+ * Delete a board, and — via the foreign key's ON DELETE CASCADE set up in the
+ * migration — every photo, note, and sticker pinned to it. Resolves to
+ * `{ ok, error }`; the caller is responsible for making sure that is really
+ * what she wants before calling this.
+ */
+export async function deleteScrapbookBoard(id) {
+  try {
+    const { error } = await supabase.from(SCRAPBOOK_BOARDS_TABLE).delete().eq('id', id)
+    if (error) throw error
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Could not delete that board.' }
   }
 }
 

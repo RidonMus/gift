@@ -8,6 +8,7 @@ import QuestionScreen from './components/QuestionScreen'
 import QuestionJar from './components/QuestionJar'
 import BonsaiTree from './components/BonsaiTree'
 import ScrapbookCanvas from './components/ScrapbookCanvas'
+import PasswordGate from './components/PasswordGate'
 import { memories } from './data/memories'
 import { useStickyState } from './hooks/useStickyState'
 
@@ -21,6 +22,7 @@ export default function App() {
   const [phase, setPhase] = useState('gallery')
   const [activeId, setActiveId] = useState(null)
   const [completed, setCompleted] = useStickyState('cozy:completed', [])
+  const [unlocked, setUnlocked] = useStickyState('cozy:unlocked', false)
 
   const memory = memories.find((m) => m.id === activeId) || null
 
@@ -43,6 +45,15 @@ export default function App() {
     setCompleted((done) => (done.includes(activeId) ? done : [...done, activeId]))
     setPhase('reveal')
   }, [activeId, setCompleted])
+
+  if (!unlocked) {
+    return (
+      <div className="relative min-h-full">
+        <CozyBackdrop />
+        <PasswordGate onUnlock={() => setUnlocked(true)} />
+      </div>
+    )
+  }
 
   return (
     <div className="relative min-h-full">

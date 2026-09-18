@@ -1,12 +1,19 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import DoodleButton from './DoodleButton'
 import { asset, probeImage } from '../utils/assets'
+import { exportScrapbookAsImage, slugifyBoardName } from '../utils/exportScrapbook'
+import { BOARD_H, BOARD_W, SIZES, STICKER_DEFS, STICKER_INK, STICKER_NAMES, noteColorFor } from '../utils/scrapbookShared'
+import { useStickyState } from '../hooks/useStickyState'
 import {
   addScrapbookItem,
   compressImage,
+  createScrapbookBoard,
+  deleteScrapbookBoard,
+  fetchScrapbookBoards,
   fetchScrapbookItems,
   moveScrapbookItem,
   removeScrapbookItem,
+  renameScrapbookBoard,
   subscribeToScrapbook,
   uploadScrapbookPhoto,
 } from '../lib/supabase'
@@ -20,22 +27,14 @@ import {
  * and a note she tucks beside a photo on a 768px iPad lands somewhere else
  * entirely on a 1440px laptop. One coordinate space, one arrangement, both of
  * us looking at the same page.
+ *
+ * It can also become *several* boards. `boardsSupported` is null until the
+ * first check comes back, then true or false depending on whether the
+ * `scrapbook_boards` table and the migration that goes with it exist yet. When
+ * it is false the whole switcher stays hidden and the screen behaves exactly
+ * as it always has — one continuous board, nothing filtered — which is what
+ * keeps this safe to ship before that one-time SQL has been run.
  * ------------------------------------------------------------------------- */
-
-const BOARD_W = 1200
-const BOARD_H = 900
-
-/* Roughly how big each kind of thing is, in board units. Used for clamping so
- * nothing can be dragged off the edge and lost. */
-const SIZES = {
-  photo: { w: 200, h: 232 },
-  note: { w: 180, h: 150 },
-  sticker: { w: 78, h: 78 },
-}
-
-const NOTE_COLORS = ['#F7E6AC', '#F6C7CE', '#C7D8C0', '#C5DEEA', '#DACDE9', '#F8D3B8']
-
-const STICKERS = ['heart', 'star', 'tape', 'sparkle', 'leaf']
 
 const randomTilt = () => Math.round((Math.random() * 16 - 8) * 100) / 100
 
@@ -54,6 +53,17 @@ export default function ScrapbookCanvas({ onBack }) {
   const [photoError, setPhotoError] = useState(null)
   const [uploadStage, setUploadStage] = useState(null) // 'shrinking' | 'uploading'
   const [toast, setToast] = useState(null)
+
+  // ---- boards ------------------------------------------------------------
+  const [boards, setBoards] = useState([])
+  const [boardsSupported, setBoardsSupported] = useState(null) // null = still checking
+  const [activeBoardId, setActiveBoardId] = useStickyState('cozy:activeScrapbookBoard', null)
+  const [boardPanelOpen, setBoardPanelOpen] = useState(false)
+  const [renamingBoardId, setRenamingBoardId] = useState(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [creatingBoard, setCreatingBoard] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const wrapRef = useRef(null)
   const boardRef = useRef(null)
@@ -92,10 +102,37 @@ export default function ScrapbookCanvas({ onBack }) {
     return () => observer.disconnect()
   }, [])
 
-  /* ---- load, then listen ----------------------------------------------- */
+  /* ---- which board(s) exist, and which one is open ---------------------- */
   useEffect(() => {
     let cancelled = false
-    fetchScrapbookItems().then((rows) => {
+    fetchScrapbookBoards().then((result) => {
+      if (cancelled) return
+      setBoardsSupported(!result.unsupported)
+      setBoards(result.boards)
+      if (!result.unsupported && result.boards.length > 0) {
+        setActiveBoardId((current) =>
+          current && result.boards.some((b) => b.id === current) ? current : result.boards[0].id,
+        )
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // setActiveBoardId is a useState-style setter (stable identity); safe to omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // The id to actually query by — undefined whenever boards are not (yet)
+  // supported, which is exactly the pre-multi-board "fetch everything" query.
+  const effectiveBoardId = boardsSupported ? activeBoardId : undefined
+  const boardsReady = boardsSupported === false || (boardsSupported === true && !!activeBoardId)
+
+  /* ---- load this board's items, then listen -------------------------- */
+  useEffect(() => {
+    if (!boardsReady) return undefined
+    let cancelled = false
+    setLoading(true)
+    fetchScrapbookItems(effectiveBoardId).then((rows) => {
       if (cancelled) return
       setItems(rows)
       setLoading(false)
@@ -103,7 +140,7 @@ export default function ScrapbookCanvas({ onBack }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [boardsReady, effectiveBoardId])
 
   /* Refetch whenever the board comes back into view.
    *
@@ -113,9 +150,10 @@ export default function ScrapbookCanvas({ onBack }) {
    * iPad, and you see whatever the other person left. One query per focus,
    * not a polling loop. Anything mid-drag is left alone. */
   useEffect(() => {
+    if (!boardsReady) return undefined
     const resync = async () => {
       if (document.visibilityState === 'hidden' || dragRef.current) return
-      const rows = await fetchScrapbookItems()
+      const rows = await fetchScrapbookItems(effectiveBoardId)
       setItems((current) => {
         const held = dragRef.current?.id
         if (!held) return rows
@@ -130,10 +168,11 @@ export default function ScrapbookCanvas({ onBack }) {
       window.removeEventListener('focus', resync)
       document.removeEventListener('visibilitychange', resync)
     }
-  }, [])
+  }, [boardsReady, effectiveBoardId])
 
   useEffect(() => {
-    const unsubscribe = subscribeToScrapbook((change) => {
+    if (!boardsReady) return undefined
+    const unsubscribe = subscribeToScrapbook(effectiveBoardId, (change) => {
       setItems((current) => {
         if (change.kind === 'delete') return current.filter((i) => i.id !== change.id)
 
@@ -148,7 +187,7 @@ export default function ScrapbookCanvas({ onBack }) {
       })
     })
     return unsubscribe
-  }, [])
+  }, [boardsReady, effectiveBoardId])
 
   const topZ = items.reduce((max, i) => Math.max(max, i.z), 0)
 
@@ -247,7 +286,7 @@ export default function ScrapbookCanvas({ onBack }) {
       const draftItem = { id: optimisticId, type, content, x, y, rotation: randomTilt(), z: topZ + 1 }
       setItems((current) => [...current, draftItem])
 
-      const result = await addScrapbookItem(draftItem)
+      const result = await addScrapbookItem({ ...draftItem, boardId: effectiveBoardId })
       if (!result.ok) {
         setItems((current) => current.filter((i) => i.id !== optimisticId))
         flashToast(result.error)
@@ -257,7 +296,7 @@ export default function ScrapbookCanvas({ onBack }) {
       setItems((current) => current.map((i) => (i.id === optimisticId ? result.item : i)))
       flashToast(type === 'note' ? 'Pinned to the board ✨' : 'Stuck it on ✨')
     },
-    [topZ, flashToast],
+    [topZ, effectiveBoardId, flashToast],
   )
 
   const handleSaveNote = useCallback(async () => {
@@ -350,6 +389,101 @@ export default function ScrapbookCanvas({ onBack }) {
     [items, flashToast],
   )
 
+  /* ---- boards: switch, create, rename, delete --------------------------- */
+  const activeBoard = boards.find((b) => b.id === activeBoardId) || null
+  const activeBoardName = activeBoard?.name || 'Our Scrapbook'
+
+  const handleSwitchBoard = useCallback(
+    (id) => {
+      setBoardPanelOpen(false)
+      if (id === activeBoardId) return
+      setSelected(null)
+      setActiveBoardId(id)
+    },
+    [activeBoardId, setActiveBoardId],
+  )
+
+  const handleCreateBoard = useCallback(async () => {
+    if (creatingBoard) return
+    setCreatingBoard(true)
+    const label = `New board — ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date())}`
+    const result = await createScrapbookBoard(label)
+    setCreatingBoard(false)
+
+    if (!result.ok) {
+      flashToast(result.error)
+      return
+    }
+    setBoards((current) => [...current, result.board])
+    setActiveBoardId(result.board.id)
+    // Straight into renaming it, so the placeholder name never has to stick.
+    // The panel stays open on purpose — the rename field it's about to show
+    // lives inside it, so closing here would hide the very field she needs.
+    setRenamingBoardId(result.board.id)
+    setRenameDraft(result.board.name)
+  }, [creatingBoard, flashToast, setActiveBoardId])
+
+  const startRename = useCallback((board) => {
+    setRenamingBoardId(board.id)
+    setRenameDraft(board.name)
+  }, [])
+
+  const commitRename = useCallback(async () => {
+    const id = renamingBoardId
+    const name = renameDraft.trim()
+    setRenamingBoardId(null)
+    if (!id || !name) return
+
+    const result = await renameScrapbookBoard(id, name)
+    if (!result.ok) {
+      flashToast(result.error)
+      return
+    }
+    setBoards((current) => current.map((b) => (b.id === id ? { ...b, name } : b)))
+  }, [renamingBoardId, renameDraft, flashToast])
+
+  const handleDeleteBoard = useCallback(
+    async (id) => {
+      setConfirmDeleteId(null)
+      if (boards.length <= 1) {
+        flashToast('Keep at least one board.')
+        return
+      }
+
+      const result = await deleteScrapbookBoard(id)
+      if (!result.ok) {
+        flashToast(result.error)
+        return
+      }
+
+      const remaining = boards.filter((b) => b.id !== id)
+      setBoards(remaining)
+      if (activeBoardId === id) setActiveBoardId(remaining[0]?.id ?? null)
+      flashToast('Board deleted 🍂')
+    },
+    [boards, activeBoardId, flashToast, setActiveBoardId],
+  )
+
+  /* ---- download ----------------------------------------------------------- */
+  const handleDownload = useCallback(async () => {
+    if (exporting || items.length === 0) return
+    setExporting(true)
+    try {
+      const dataUrl = await exportScrapbookAsImage(items, activeBoardName)
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = `${slugifyBoardName(activeBoardName)}.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      flashToast('Saved to your downloads ✨')
+    } catch {
+      flashToast('Could not create the download — try again?')
+    } finally {
+      setExporting(false)
+    }
+  }, [exporting, items, activeBoardName, flashToast])
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-6 sm:px-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -372,6 +506,122 @@ export default function ScrapbookCanvas({ onBack }) {
         >
           ← back to the memories
         </button>
+      </div>
+
+      {/* ---- boards row ---- */}
+      <div className="relative z-40 mb-3 flex flex-wrap items-center gap-2">
+        {boardsSupported && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setBoardPanelOpen((open) => !open)}
+              className="flex items-center gap-1.5 rounded-pebble border-2 border-ink/40 bg-paper px-3 py-1.5 font-hand text-xl text-ink shadow-sketch press-soft hover:border-ink/70"
+            >
+              📚 {activeBoardName}
+              <span className="text-sm text-ink-faint">▾</span>
+            </button>
+
+            {boardPanelOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setBoardPanelOpen(false)} />
+                <div className="absolute left-0 top-full z-40 mt-2 w-72 animate-pop-in rounded-card border-2 border-ink/60 bg-paper p-2 shadow-lifted">
+                  {boards.map((board) => (
+                    <div
+                      key={board.id}
+                      className="group flex items-center gap-1 rounded-pebble px-2 py-1.5 hover:bg-paper-deep"
+                    >
+                      {renamingBoardId === board.id ? (
+                        <input
+                          autoFocus
+                          value={renameDraft}
+                          onChange={(e) => setRenameDraft(e.target.value)}
+                          onBlur={commitRename}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitRename()
+                            if (e.key === 'Escape') setRenamingBoardId(null)
+                          }}
+                          className="min-w-0 flex-1 rounded border border-ink/40 bg-paper-deep px-1.5 py-0.5 font-hand text-lg text-ink focus:outline-none"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchBoard(board.id)}
+                          className={[
+                            'min-w-0 flex-1 truncate text-left font-hand text-lg',
+                            board.id === activeBoardId ? 'font-semibold text-ink' : 'text-ink-soft',
+                          ].join(' ')}
+                        >
+                          {board.id === activeBoardId ? '● ' : ''}
+                          {board.name}
+                        </button>
+                      )}
+
+                      {confirmDeleteId === board.id ? (
+                        <span className="flex shrink-0 items-center gap-1.5 font-body text-xs">
+                          <span className="text-ink-faint">delete it?</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBoard(board.id)}
+                            className="rounded border border-blush-deep bg-blush-soft px-1.5 py-0.5 text-ink"
+                          >
+                            yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-ink-faint underline"
+                          >
+                            no
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => startRename(board)}
+                            aria-label={`Rename ${board.name}`}
+                            className="rounded px-1.5 py-0.5 text-sm hover:bg-paper"
+                          >
+                            ✏️
+                          </button>
+                          {boards.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(board.id)}
+                              aria-label={`Delete ${board.name}`}
+                              className="rounded px-1.5 py-0.5 text-sm hover:bg-paper"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleCreateBoard}
+                    disabled={creatingBoard}
+                    className="mt-1 w-full rounded-pebble border-2 border-dashed border-sage-deep px-2 py-1.5 text-center font-hand text-lg text-sage-deep hover:bg-sage-soft/50 disabled:opacity-60"
+                  >
+                    {creatingBoard ? 'starting…' : '+ New board'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        <DoodleButton
+          size="sm"
+          variant="sky"
+          alt
+          onClick={handleDownload}
+          disabled={exporting || items.length === 0}
+        >
+          {exporting ? 'saving…' : '💾 Download Board'}
+        </DoodleButton>
       </div>
 
       {/* ---- the board ---- */}
@@ -545,7 +795,7 @@ export default function ScrapbookCanvas({ onBack }) {
           ) : pickingSticker ? (
             <div className="flex animate-pop-in flex-wrap items-center gap-2">
               <span className="font-hand text-2xl text-ink">pick one —</span>
-              {STICKERS.map((name) => (
+              {STICKER_NAMES.map((name) => (
                 <button
                   key={name}
                   type="button"
@@ -716,13 +966,9 @@ function Polaroid({ item }) {
 
 /** A torn-off square of paper with something written on it. */
 function StickyNote({ item }) {
-  // Colour is picked from the text so it stays the same on every device,
-  // without needing a colour column in the table.
-  const index = [...String(item.content)].reduce((sum, c) => sum + c.charCodeAt(0), 0) % NOTE_COLORS.length
-
   return (
     <div
-      style={{ backgroundColor: NOTE_COLORS[index] }}
+      style={{ backgroundColor: noteColorFor(item.content) }}
       className="select-none rounded-[3px] px-4 py-3.5"
     >
       <p className="whitespace-pre-wrap break-words font-hand text-2xl leading-tight text-ink">
@@ -732,57 +978,35 @@ function StickyNote({ item }) {
   )
 }
 
-/** The hand-drawn stickers. */
+/**
+ * The hand-drawn stickers, built from the shared shape definitions in
+ * scrapbookShared.js — the same ones exportScrapbook.js draws onto a canvas,
+ * so a downloaded board's stickers look exactly like the ones on screen.
+ */
 function Sticker({ name, className = '' }) {
-  const common = {
-    className: `${className} select-none pointer-events-none`,
-    viewBox: '0 0 64 64',
-    role: 'img',
-    'aria-label': `${name} sticker`,
-  }
-  const ink = { stroke: '#3C3A38', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  const def = STICKER_DEFS[name] || STICKER_DEFS.heart
 
-  switch (name) {
-    case 'star':
-      return (
-        <svg {...common}>
+  return (
+    <svg
+      className={`${className} select-none pointer-events-none`}
+      viewBox="0 0 64 64"
+      role="img"
+      aria-label={`${name} sticker`}
+    >
+      <g stroke={STICKER_INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        {def.paths.map((p, i) => (
+          <path key={i} d={p.d} fill={def.fill} fillOpacity={def.fillOpacity ?? 1} />
+        ))}
+        {(def.extraStrokes || []).map((line, i) => (
           <path
-            d="M32 6 L39 24 L58 26 L44 39 L48 58 L32 48 L16 58 L20 39 L6 26 L25 24 Z"
-            fill="#F7E6AC"
-            {...ink}
+            key={`s${i}`}
+            d={line.d}
+            fill="none"
+            strokeWidth={line.strokeWidth ?? 3}
+            opacity={line.opacity ?? 1}
           />
-        </svg>
-      )
-    case 'tape':
-      return (
-        <svg {...common}>
-          <path d="M4 24 L60 18 L60 44 L4 50 Z" fill="#C5DEEA" fillOpacity="0.85" {...ink} />
-          <path d="M4 24 l8 26 M20 22 l8 26 M36 20 l8 26 M52 19 l8 25" {...ink} strokeWidth="1.6" opacity="0.55" />
-        </svg>
-      )
-    case 'sparkle':
-      return (
-        <svg {...common}>
-          <path d="M32 4 C34 22, 42 30, 60 32 C42 34, 34 42, 32 60 C30 42, 22 34, 4 32 C22 30, 30 22, 32 4 Z" fill="#DACDE9" {...ink} />
-        </svg>
-      )
-    case 'leaf':
-      return (
-        <svg {...common}>
-          <path d="M32 58 C8 44, 10 14, 32 6 C54 14, 56 44, 32 58 Z" fill="#C7D8C0" {...ink} />
-          <path d="M32 12 V54" {...ink} strokeWidth="2.2" />
-        </svg>
-      )
-    case 'heart':
-    default:
-      return (
-        <svg {...common}>
-          <path
-            d="M32 56 C4 38, 6 14, 20 12 C27 11, 31 16, 32 20 C33 16, 37 11, 44 12 C58 14, 60 38, 32 56 Z"
-            fill="#F6C7CE"
-            {...ink}
-          />
-        </svg>
-      )
-  }
+        ))}
+      </g>
+    </svg>
+  )
 }
