@@ -9,6 +9,7 @@ import QuestionJar from './components/QuestionJar'
 import BonsaiTree from './components/BonsaiTree'
 import ScrapbookCanvas from './components/ScrapbookCanvas'
 import PasswordGate from './components/PasswordGate'
+import IntroVideo from './components/IntroVideo'
 import { memories } from './data/memories'
 import { useStickyState } from './hooks/useStickyState'
 
@@ -23,6 +24,8 @@ export default function App() {
   const [activeId, setActiveId] = useState(null)
   const [completed, setCompleted] = useStickyState('cozy:completed', [])
   const [unlocked, setUnlocked] = useStickyState('cozy:unlocked', false)
+  // Deliberately not remembered: the welcome video plays on every visit.
+  const [introSeen, setIntroSeen] = useState(false)
 
   const memory = memories.find((m) => m.id === activeId) || null
 
@@ -41,6 +44,8 @@ export default function App() {
     setActiveId(null)
   }, [])
 
+  const finishIntro = useCallback(() => setIntroSeen(true), [])
+
   const handleSolved = useCallback(() => {
     setCompleted((done) => (done.includes(activeId) ? done : [...done, activeId]))
     setPhase('reveal')
@@ -51,6 +56,15 @@ export default function App() {
       <div className="relative min-h-full">
         <CozyBackdrop />
         <PasswordGate onUnlock={() => setUnlocked(true)} />
+      </div>
+    )
+  }
+
+  if (!introSeen) {
+    return (
+      <div className="relative min-h-full">
+        <CozyBackdrop />
+        <IntroVideo name={HER_NAME} onEnter={finishIntro} />
       </div>
     )
   }

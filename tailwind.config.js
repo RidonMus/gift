@@ -3,6 +3,10 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      // For screens that are wide but not tall, i.e. a phone held sideways.
+      screens: {
+        short: { raw: '(max-height: 560px)' },
+      },
       colors: {
         paper: '#FBF9F5',
         'paper-deep': '#F7F4EE',
